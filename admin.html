@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plonk's Blog - 文章管理</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="logo">Plonk's Blog</a>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="about.html">关于</a></li>
+                <li><a href="contact.html">联系</a></li>
+                <li><a href="admin.html" class="active">管理</a></li>
+            </ul>
+            <button class="menu-toggle" aria-label="菜单">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 登录遮罩 -->
+    <div class="login-overlay" id="loginOverlay" style="display:flex">
+        <div class="login-modal">
+            <div class="login-header">
+                <h2 id="loginTitle">管理员登录</h2>
+                <p id="loginSubtitle">请输入管理密码</p>
+            </div>
+
+            <!-- 登录表单 -->
+            <form id="loginForm" class="login-form" onsubmit="return Auth.login()">
+                <div class="login-field">
+                    <label for="loginPassword">密码</label>
+                    <input type="password" id="loginPassword" placeholder="输入管理密码" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary login-btn">进入管理后台</button>
+                <p id="loginError" class="login-error" style="display:none">❌ 密码错误，请重试</p>
+            </form>
+
+            <!-- 首次设置表单 -->
+            <form id="setupForm" class="login-form" style="display:none" onsubmit="return Auth.setup()">
+                <div class="login-field">
+                    <label for="setupPassword">设置管理密码</label>
+                    <input type="password" id="setupPassword" placeholder="设置一个安全密码" required minlength="4" autocomplete="off">
+                </div>
+                <div class="login-field">
+                    <label for="setupPassword2">确认密码</label>
+                    <input type="password" id="setupPassword2" placeholder="再次输入密码" required minlength="4" autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary login-btn">确认并进入</button>
+                <p id="setupError" class="login-error" style="display:none"></p>
+            </form>
+
+            <div class="login-footer">
+                <span class="login-hint">只有博客管理员可以访问</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理页面主体 -->
+    <section class="admin-page" id="adminContent" style="display:none">
+        <div class="container">
+            <div class="admin-header">
+                <h1 class="page-title">文章管理</h1>
+                <div class="admin-actions">
+                    <button class="btn btn-secondary" onclick="Admin.exportJSON()">📥 导出 JSON</button>
+                    <label class="btn btn-secondary" for="importFile">📤 导入 JSON</label>
+                    <input type="file" id="importFile" accept=".json" style="display:none" onchange="Admin.importJSON(event)">
+                    <button class="btn btn-secondary btn-logout" onclick="Auth.logout()">🚪 退出登录</button>
+                </div>
+            </div>
+
+            <div class="admin-layout">
+                <!-- 左侧：表单 -->
+                <div class="admin-form-panel">
+                    <h2 id="formTitle">新建文章</h2>
+                    <form id="articleForm" class="admin-form">
+                        <input type="hidden" id="editId" value="">
+
+                        <div class="form-group">
+                            <label for="postTitle">文章标题 *</label>
+                            <input type="text" id="postTitle" placeholder="输入文章标题" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="postTag">标签</label>
+                                <select id="postTag">
+                                    <option value="技术">技术</option>
+                                    <option value="前端">前端</option>
+                                    <option value="后端">后端</option>
+                                    <option value="开源">开源</option>
+                                    <option value="思考">思考</option>
+                                    <option value="生活">生活</option>
+                                    <option value="资源">资源</option>
+                                    <option value="其他">其他</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="postDate">日期</label>
+                                <input type="date" id="postDate">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="postExcerpt">摘要</label>
+                            <textarea id="postExcerpt" rows="3" placeholder="文章摘要内容..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="postURL">链接地址</label>
+                            <input type="url" id="postURL" placeholder="https://... 或留空使用 #">
+                            <span class="form-hint">如果是外部文章或资源，填写完整链接；留空则显示为占位文章</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="postCover">封面图片链接（可选）</label>
+                            <input type="url" id="postCover" placeholder="https://example.com/image.jpg">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="postContent">正文内容（支持 HTML）</label>
+                            <textarea id="postContent" rows="8" placeholder="在此输入文章正文内容...&#10;&#10;可以使用 HTML 标签：&lt;h2&gt;标题&lt;/h2&gt; &lt;p&gt;段落&lt;/p&gt; &lt;code&gt;代码&lt;/code&gt; &lt;img&gt;图片等"></textarea>
+                            <span class="form-hint">弹窗预览时会完整渲染，支持 HTML 格式</span>
+                        </div>
+
+                        <!-- 动态验证码 -->
+                        <div class="form-group captcha-group">
+                            <label for="postCaptcha">验证码 <span class="captcha-required">*</span></label>
+                            <div class="captcha-wrapper">
+                                <input type="text" id="postCaptcha" class="captcha-input" placeholder="输入上方数字" maxlength="4" required>
+                                <span class="captcha-display" id="captchaDisplay"></span>
+                                <button type="button" class="captcha-refresh" onclick="Auth.refreshCaptcha()" title="换一张">🔄</button>
+                            </div>
+                            <span class="form-hint">请输入左侧显示的验证码，点击 🔄 可刷新</span>
+                        </div>
+
+                        <div class="form-buttons">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">发布文章</button>
+                            <button type="button" class="btn btn-secondary" onclick="Admin.cancelEdit()" id="cancelBtn" style="display:none">取消编辑</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 右侧：文章列表 -->
+                <div class="admin-list-panel">
+                    <div class="admin-list-header">
+                        <h2>已发布文章</h2>
+                        <span class="admin-count" id="postCount">0 篇</span>
+                    </div>
+
+                    <div class="admin-list-toolbar">
+                        <input type="text" id="searchInput" class="admin-search" placeholder="搜索文章..." oninput="Admin.searchPosts(this.value)">
+                        <select id="filterTag" class="admin-filter" onchange="Admin.filterByTag(this.value)">
+                            <option value="">全部分类</option>
+                            <option value="技术">技术</option>
+                            <option value="前端">前端</option>
+                            <option value="后端">后端</option>
+                            <option value="开源">开源</option>
+                            <option value="思考">思考</option>
+                            <option value="生活">生活</option>
+                            <option value="资源">资源</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+
+                    <div class="admin-list" id="adminPostList">
+                        <!-- 由 JS 动态渲染 -->
+                    </div>
+
+                    <div class="admin-bulk-actions">
+                        <button class="btn btn-secondary" onclick="Admin.clearAll()">🗑 清空所有自定义文章</button>
+                        <button class="btn btn-secondary" onclick="Auth.showChangePassword()">🔑 修改密码</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Plonk's Blog. All rights reserved.</p>
+            <div class="social-links">
+                <a href="https://github.com/Plonkloving" target="_blank" rel="noopener">GitHub</a>
+                <a href="mailto:2938115711@qq.com">Email</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 修改密码弹窗 -->
+    <div class="login-overlay" id="changePwdOverlay" style="display:none">
+        <div class="login-modal">
+            <div class="login-header">
+                <h2>修改管理密码</h2>
+            </div>
+            <form class="login-form" onsubmit="return Auth.changePassword()">
+                <div class="login-field">
+                    <label for="oldPassword">当前密码</label>
+                    <input type="password" id="oldPassword" placeholder="输入当前密码" required autocomplete="off">
+                </div>
+                <div class="login-field">
+                    <label for="newPassword">新密码</label>
+                    <input type="password" id="newPassword" placeholder="输入新密码（至少4位）" required minlength="4" autocomplete="off">
+                </div>
+                <div class="login-field">
+                    <label for="newPassword2">确认新密码</label>
+                    <input type="password" id="newPassword2" placeholder="再次输入新密码" required minlength="4" autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary login-btn">确认修改</button>
+                <button type="button" class="btn btn-secondary login-btn" onclick="Auth.hideChangePassword()" style="margin-top:8px">取消</button>
+                <p id="changePwdError" class="login-error" style="display:none"></p>
+                <p id="changePwdSuccess" class="login-success" style="display:none">✅ 密码修改成功！</p>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
