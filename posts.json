@@ -7,6 +7,18 @@
     "excerpt": "这是一篇示例文章。你可以通过管理后台添加/编辑文章，然后一键同步到 GitHub，所有访问者都能看到更新。",
     "url": "#",
     "cover": "",
-    "content": "<h2>欢迎！</h2><p>你的博客已经成功搭建。现在你可以：</p><ol><li>前往管理后台添加新文章</li><li>配置 GitHub 同步令牌</li><li>一键同步文章到仓库</li><li>所有访客都能看到更新</li></ol>"
+    "content": "<h2>欢迎！</h2><p>你的博客已经成功搭建。现在你可以：</p><ol><li>前往管理后台添加新文章</li><li>配置 GitHub 同步令牌</li><li>一键同步文章到仓库</li><li>所有访客都能看到更新</li></ol>",
+    "isStatic": false
+  },
+  {
+    "id": "example-2",
+    "title": "如何发布文章",
+    "tag": "其他",
+    "date": "2026-07-21",
+    "excerpt": "在这篇指南中，你将学会如何使用管理后台创建、编辑文章，并同步到 GitHub 让所有人可见。",
+    "url": "#",
+    "cover": "",
+    "content": "<h2>三步发布文章</h2><ol><li><strong>登录管理后台</strong> — 在导航栏点击「管理」并输入密码</li><li><strong>创建文章</strong> — 填写标题、标签、摘要和正文内容（支持 HTML）</li><li><strong>同步到 GitHub</strong> — 点击「☁️ 同步到 GitHub」按钮，输入验证码即可推送到仓库</li></ol><blockquote>同步后所有访问者都能立即看到更新的内容。</blockquote>",
+    "isStatic": false
   }
 ]

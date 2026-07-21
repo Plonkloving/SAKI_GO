@@ -1135,27 +1135,26 @@ a:hover {
     padding: 8px 16px;
 
 
-/* GitHub 同步状态栏 */
-.git-sync-bar {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    margin-top: 24px;
-    padding: 12px 18px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 0.93rem;
-    box-shadow: var(--shadow);
+/* 同步状态标记 */
+.admin-sync-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    margin-left: 4px;
 }
 
-.git-sync-bar #gitSyncIcon {
-    font-size: 1.3rem;
+.admin-sync-badge.synced {
+    background: #dcfce7;
+    color: #16a34a;
 }
 
-.git-sync-bar #gitSyncText {
-    color: var(--text);
+.admin-sync-badge.unsynced {
+    background: #fef3c7;
+    color: #d97706;
 }
+
 /* ==================== 登录认证 ==================== */
 .login-overlay {
     display: none;
@@ -1254,6 +1253,40 @@ a:hover {
     font-size: 0.82rem;
     color: var(--text-secondary);
 }
+
+/* ==================== 同步结果弹窗 ==================== */
+.sync-result-modal {
+    max-width: 380px;
+    text-align: center;
+    padding: 48px 36px 40px;
+}
+
+.sync-result-icon {
+    font-size: 3.2rem;
+    margin-bottom: 16px;
+    line-height: 1;
+}
+
+.sync-result-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.sync-result-desc {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+#syncResultActions {
+    display: flex;
+    justify-content: center;
+}
+
+#syncResultBtn {
+    min-width: 120px;
 }
 
 /* ==================== 响应式设计 ==================== */

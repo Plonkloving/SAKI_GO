@@ -164,7 +164,6 @@ POST /users</code></pre>
 
 // ==================== 数据读写 ====================
 
-const STORAGE_KEY = 'plonk_blog_posts';
 const GIT_CONFIG_KEY = 'plonk_git_config';
 
 /** 远程文章缓存（从 posts.json 加载） */
@@ -175,7 +174,21 @@ async function loadRemotePosts() {
     try {
         const res = await fetch('posts.json?_=' + Date.now());
         if (res.ok) {
-            _remotePosts = await res.json();
+            const data = await res.json();
+            // 数据校验：确保每篇文章有必要的字段
+            if (Array.isArray(data)) {
+                _remotePosts = data
+                    .filter(p => p && typeof p === 'object' && p.id && p.title)
+                    .map(p => ({
+                        ...p,
+                        isStatic: false,  // 统一标记为自定义文章
+                        excerpt: p.excerpt || '',
+                        date: p.date || '',
+                        url: p.url || '#',
+                        cover: p.cover || '',
+                        content: p.content || ''
+                    }));
+            }
         }
     } catch {
         // 静默失败，使用本地数据
@@ -197,15 +210,21 @@ function saveUserPosts(posts) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
 }
 
-/** 获取合并后的全部文章：远程 > 本地草稿 > 静态 */
+/** 获取合并后的全部文章：本地草稿 > 远程已同步 > 静态 */
 function getPosts() {
-    // 优先使用远程数据（所有访问者共享）
-    if (_remotePosts.length > 0) {
-        return [..._remotePosts, ...STATIC_POSTS];
-    }
-    // 降级：本地草稿 + 静态
     const localPosts = loadUserPosts();
-    return [...localPosts, ...STATIC_POSTS];
+    const localMap = new Map(localPosts.map(p => [p.id, p]));
+
+    // 合并远程数据，被本地编辑过的用本地版本覆盖
+    const syncedPosts = _remotePosts.map(p => localMap.get(p.id) || p);
+
+    // 标记哪些 ID 已同步
+    const syncedIds = new Set(_remotePosts.map(p => p.id));
+
+    // 本地新增（尚未同步）的文章排在前面
+    const unsyncedPosts = localPosts.filter(p => !syncedIds.has(p.id));
+
+    return [...unsyncedPosts, ...syncedPosts, ...STATIC_POSTS];
 }
 
 /** 生成唯一 ID */
@@ -447,11 +466,11 @@ const Auth = {
     },
 
     /** 登录成功 → 显示管理内容 */
-    showAdmin() {
+    async showAdmin() {
         document.getElementById('loginOverlay').style.display = 'none';
         document.getElementById('adminContent').style.display = 'block';
-        // 初始化管理功能
-        Admin.init();
+        // 初始化管理功能（先加载远程数据）
+        await Admin.init();
         generateCaptcha();
     },
 
@@ -532,12 +551,33 @@ function renderPosts() {
         return;
     }
 
+    // 判断哪些文章已同步到 GitHub
+    const syncedIds = new Set(_remotePosts.map(p => p.id));
+    const localIds = new Set(loadUserPosts().map(p => p.id));
+
     grid.innerHTML = allPosts.map(post => {
-        const tagStyle = post.isStatic ? '' : 'style="background:#fef3c7;color:#d97706"';
+        let tagStyle, badge;
+        if (post.isStatic) {
+            // 内置静态文章：蓝色标签，无标记
+            tagStyle = '';
+            badge = '';
+        } else if (syncedIds.has(post.id)) {
+            // 已同步到 GitHub：琥珀色标签 + ✅
+            tagStyle = 'style="background:#fef3c7;color:#d97706"';
+            badge = ' ✅';
+        } else if (localIds.has(post.id)) {
+            // 本地新增未同步：琥珀色标签 + ☁️
+            tagStyle = 'style="background:#fef3c7;color:#d97706"';
+            badge = ' ☁️';
+        } else {
+            // 远程已有但本地无：琥珀色标签
+            tagStyle = 'style="background:#fef3c7;color:#d97706"';
+            badge = '';
+        }
         return `
         <article class="post-card" data-post-id="${post.id}">
             ${post.cover ? `<div class="post-cover"><img src="${post.cover}" alt="${post.title}" loading="lazy"></div>` : ''}
-            <span class="post-tag" ${tagStyle}>${post.tag}${post.isStatic ? '' : ' ✏️'}</span>
+            <span class="post-tag" ${tagStyle}>${post.tag}${badge}</span>
             <h3>${post.title}</h3>
             <p class="post-excerpt">${post.excerpt || '暂无摘要'}</p>
             <div class="post-meta">
@@ -547,14 +587,19 @@ function renderPosts() {
         </article>`;
     }).join('');
 
-    // 点击卡片打开弹窗（事件委托）
-    grid.addEventListener('click', (e) => {
+    // 移除旧的事件监听（避免重复绑定）
+    const oldClick = grid._postClickHandler;
+    if (oldClick) grid.removeEventListener('click', oldClick);
+
+    const clickHandler = (e) => {
         const card = e.target.closest('.post-card');
         if (card) {
             const postId = card.dataset.postId;
             openPostModal(postId);
         }
-    });
+    };
+    grid._postClickHandler = clickHandler;
+    grid.addEventListener('click', clickHandler);
 }
 
 // ==================== 文章弹窗（全屏预览） ====================
@@ -700,8 +745,20 @@ const Admin = {
     _filterTag: '',
 
     /** 初始化管理后台 */
-    init() {
+    async init() {
         if (!document.getElementById('articleForm')) return;
+
+        // 从 GitHub 拉取远程文章到本地，让管理页看到已同步的数据
+        await loadRemotePosts();
+        if (_remotePosts.length > 0) {
+            // 合并远程数据到 localStorage（保留本地已有文章不覆盖）
+            const existing = loadUserPosts();
+            const existingIds = new Set(existing.map(p => p.id));
+            const newPosts = _remotePosts.filter(p => !existingIds.has(p.id));
+            if (newPosts.length > 0) {
+                saveUserPosts([...newPosts, ...existing]);
+            }
+        }
 
         this.bindForm();
         this.renderList();
@@ -871,6 +928,9 @@ const Admin = {
 
         // 更新计数
         const countEl = document.getElementById('postCount');
+
+        // IDs that are already synced to GitHub
+        const syncedIds = new Set(_remotePosts.map(p => p.id));
         const total = loadUserPosts().length;
         if (countEl) countEl.textContent = `${total} 篇（筛选后 ${posts.length} 篇）`;
 
@@ -888,6 +948,9 @@ const Admin = {
             <div class="admin-post-item">
                 <div class="admin-post-info">
                     <span class="admin-post-tag" style="background:#fef3c7;color:#d97706">${post.tag}</span>
+                    ${syncedIds.has(post.id)
+                      ? '<span class="admin-sync-badge synced">✅ 已同步</span>'
+                      : '<span class="admin-sync-badge unsynced">☁️ 未同步</span>'}
                     <h4>${post.title}</h4>
                     <div class="admin-post-meta">
                         <span>📅 ${post.date || '未填'}</span>
@@ -980,48 +1043,65 @@ const Admin = {
         if (!confirm('再次确认：真的要全部删除吗？')) return;
         saveUserPosts([]);
         this.renderList();
+    },
+
     // ---- GitHub 同步 ----
 
-    /** Show sync status bar */
-    setSyncStatus(icon, text, isError) {
-        const bar = document.getElementById('gitSyncBar');
-        const iconEl = document.getElementById('gitSyncIcon');
-        const textEl = document.getElementById('gitSyncText');
-        if (!bar) return;
-        bar.style.display = 'flex';
+    /** 显示同步结果弹窗 */
+    setSyncStatus(icon, title, desc, isError) {
+        const overlay = document.getElementById('syncResultOverlay');
+        const iconEl = document.getElementById('syncResultIcon');
+        const titleEl = document.getElementById('syncResultTitle');
+        const descEl = document.getElementById('syncResultDesc');
+        const btn = document.getElementById('syncResultBtn');
+        if (!overlay) return;
+
         iconEl.textContent = icon;
-        textEl.textContent = text;
-        textEl.style.color = isError ? '#dc2626' : 'var(--text)';
+        titleEl.textContent = title;
+        descEl.textContent = desc;
+        descEl.style.color = isError ? '#dc2626' : 'var(--text-secondary)';
+        overlay.style.display = 'flex';
+
         if (isError) {
-            setTimeout(() => { bar.style.display = 'none'; }, 5000);
+            btn.textContent = '知道了';
+            btn.style.display = 'inline-block';
+        } else {
+            btn.style.display = 'none';
+            // 自动关闭
+            setTimeout(() => { overlay.style.display = 'none'; }, 2500);
         }
+    },
+
+    /** 关闭同步结果弹窗 */
+    closeSyncResult() {
+        document.getElementById('syncResultOverlay').style.display = 'none';
     },
 
     /** 一键同步到 GitHub */
     async syncToGitHub() {
+        this.setSyncStatus('⏳', '正在同步...', '请稍候，正在推送到 GitHub');
         try {
-            this.setSyncStatus('⏳', '正在同步到 GitHub...');
             await GitSync.sync();
-            this.setSyncStatus('✅', '同步成功！文章已推送到 GitHub 仓库');
             await loadRemotePosts();
+            this.setSyncStatus('✅', '同步成功！', '文章已推送到 GitHub 仓库，所有访问者可见');
         } catch (err) {
-            this.setSyncStatus('❌', '同步失败: ' + err.message, true);
+            this.setSyncStatus('❌', '同步失败', err.message, true);
         }
     },
 
     /** 从 GitHub 拉取 */
     async pullFromGitHub() {
+        this.setSyncStatus('⏳', '正在拉取...', '请稍候，正在从 GitHub 获取数据');
         try {
-            this.setSyncStatus('⏳', '正在从 GitHub 拉取...');
             const count = await GitSync.pull();
             if (count >= 0) {
                 this.renderList();
-                this.setSyncStatus('✅', '拉取成功！共 ' + count + ' 篇文章');
+                this.setSyncStatus('✅', '拉取成功！', '共拉取 ' + count + ' 篇文章');
             } else {
-                this.setSyncStatus('⚠️', '拉取完成，但没有获取到数据', true);
+                this.setSyncStatus('⚠️', '拉取完成', '没有获取到新数据，请检查仓库中是否有 posts.json', true);
             }
         } catch (err) {
-            this.setSyncStatus('❌', '拉取失败: ' + err.message, true);
+            this.setSyncStatus('❌', '拉取失败', err.message, true);
         }
     },
 
@@ -1061,9 +1141,11 @@ const Admin = {
         setTimeout(() => Admin.hideGitSettings(), 1200);
         return false;
     }
-
-
 };
+
+// 暴露到全局（供 HTML 内联事件使用）
+window.Auth = Auth;
+window.Admin = Admin;
 
 // ================================================================
 //  页面初始化

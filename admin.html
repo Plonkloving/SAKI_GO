@@ -182,10 +182,16 @@
                 </div>
             </div>
 
-            <!-- GitHub 同步状态 -->
-            <div class="git-sync-bar" id="gitSyncBar" style="display:none">
-                <span id="gitSyncIcon">⏳</span>
-                <span id="gitSyncText">处理中...</span>
+            <!-- GitHub 同步结果弹窗 -->
+            <div class="login-overlay" id="syncResultOverlay" style="display:none">
+                <div class="login-modal sync-result-modal">
+                    <div class="sync-result-icon" id="syncResultIcon">⏳</div>
+                    <h2 class="sync-result-title" id="syncResultTitle">处理中...</h2>
+                    <p class="sync-result-desc" id="syncResultDesc">请稍候</p>
+                    <div id="syncResultActions">
+                        <button class="btn btn-primary" onclick="Admin.closeSyncResult()" id="syncResultBtn" style="display:none">知道了</button>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
