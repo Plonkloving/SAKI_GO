@@ -67,6 +67,9 @@
             <div class="admin-header">
                 <h1 class="page-title">文章管理</h1>
                 <div class="admin-actions">
+                    <button class="btn btn-primary" onclick="Admin.syncToGitHub()">☁️ 同步到 GitHub</button>
+                    <button class="btn btn-secondary" onclick="Admin.pullFromGitHub()">📥 从 GitHub 拉取</button>
+                    <button class="btn btn-secondary" onclick="Admin.showGitSettings()">⚙️ GitHub 设置</button>
                     <button class="btn btn-secondary" onclick="Admin.exportJSON()">📥 导出 JSON</button>
                     <label class="btn btn-secondary" for="importFile">📤 导入 JSON</label>
                     <input type="file" id="importFile" accept=".json" style="display:none" onchange="Admin.importJSON(event)">
@@ -178,8 +181,48 @@
                     </div>
                 </div>
             </div>
+
+            <!-- GitHub 同步状态 -->
+            <div class="git-sync-bar" id="gitSyncBar" style="display:none">
+                <span id="gitSyncIcon">⏳</span>
+                <span id="gitSyncText">处理中...</span>
+            </div>
         </div>
     </section>
+
+    <!-- GitHub 设置弹窗 -->
+    <div class="login-overlay" id="gitSettingsOverlay" style="display:none">
+        <div class="login-modal">
+            <div class="login-header">
+                <h2>⚙️ GitHub 同步设置</h2>
+                <p>配置后可将文章一键同步到仓库的 <code>posts.json</code></p>
+            </div>
+            <form class="login-form" onsubmit="return Admin.saveGitSettings()">
+                <div class="login-field">
+                    <label for="gitToken">GitHub Personal Access Token *</label>
+                    <input type="password" id="gitToken" placeholder="ghp_xxxxxxxxxxxx" required autocomplete="off">
+                    <span class="form-hint">需要 <strong>repo</strong> 或 <strong>public_repo</strong> 权限</span>
+                </div>
+                <div class="login-field">
+                    <label for="gitRepo">仓库名 *</label>
+                    <input type="text" id="gitRepo" placeholder="例如: Plonkloving.github.io" required>
+                </div>
+                <div class="login-field">
+                    <label for="gitOwner">仓库所有者</label>
+                    <input type="text" id="gitOwner" placeholder="默认: Plonkloving">
+                    <span class="form-hint">留空默认使用 <strong>Plonkloving</strong></span>
+                </div>
+                <div class="login-field">
+                    <label for="gitBranch">分支</label>
+                    <input type="text" id="gitBranch" placeholder="默认: main">
+                    <span class="form-hint">留空默认使用 <strong>main</strong></span>
+                </div>
+                <button type="submit" class="btn btn-primary login-btn">保存配置</button>
+                <button type="button" class="btn btn-secondary login-btn" onclick="Admin.hideGitSettings()" style="margin-top:8px">取消</button>
+                <p id="gitSettingsStatus" class="login-success" style="display:none"></p>
+            </form>
+        </div>
+    </div>
 
     <!-- 页脚 -->
     <footer class="footer">

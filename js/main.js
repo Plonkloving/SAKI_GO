@@ -164,7 +164,25 @@ POST /users</code></pre>
 
 // ==================== 数据读写 ====================
 
-/** 从 localStorage 读取用户自定义文章 */
+const STORAGE_KEY = 'plonk_blog_posts';
+const GIT_CONFIG_KEY = 'plonk_git_config';
+
+/** 远程文章缓存（从 posts.json 加载） */
+let _remotePosts = [];
+
+/** 从 GitHub 仓库的 posts.json 加载远程文章 */
+async function loadRemotePosts() {
+    try {
+        const res = await fetch('posts.json?_=' + Date.now());
+        if (res.ok) {
+            _remotePosts = await res.json();
+        }
+    } catch {
+        // 静默失败，使用本地数据
+    }
+}
+
+/** 从 localStorage 读取本地文章 */
 function loadUserPosts() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -174,15 +192,20 @@ function loadUserPosts() {
     }
 }
 
-/** 保存用户自定义文章到 localStorage */
+/** 保存用户文章到 localStorage（本地草稿） */
 function saveUserPosts(posts) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
 }
 
-/** 获取合并后的全部文章（用户文章在前，静态文章在后） */
+/** 获取合并后的全部文章：远程 > 本地草稿 > 静态 */
 function getPosts() {
-    const userPosts = loadUserPosts();
-    return [...userPosts, ...STATIC_POSTS];
+    // 优先使用远程数据（所有访问者共享）
+    if (_remotePosts.length > 0) {
+        return [..._remotePosts, ...STATIC_POSTS];
+    }
+    // 降级：本地草稿 + 静态
+    const localPosts = loadUserPosts();
+    return [...localPosts, ...STATIC_POSTS];
 }
 
 /** 生成唯一 ID */
@@ -212,6 +235,105 @@ function refreshCaptcha() {
         input.classList.remove('captcha-error');
     }
 }
+
+// ==================== GitHub 同步 ====================
+
+const GitSync = {
+    /** 读取 GitHub 配置 */
+    getConfig() {
+        try {
+            return JSON.parse(localStorage.getItem(GIT_CONFIG_KEY)) || {};
+        } catch { return {}; }
+    },
+
+    /** 保存 GitHub 配置 */
+    saveConfig(config) {
+        localStorage.setItem(GIT_CONFIG_KEY, JSON.stringify(config));
+    },
+
+    /** 获取 posts.json 当前 SHA（文件存在时返回 SHA，不存在返回 null） */
+    async fetchSha(owner, repo, branch, token) {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/posts.json?ref=${branch}`;
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `token ${token}`,
+                Accept: 'application/vnd.github.v3+json'
+            }
+        });
+        if (res.status === 404) return null;
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || `GitHub API 错误 ${res.status}`);
+        }
+        const data = await res.json();
+        return data.sha;
+    },
+
+    /** 一键同步到 GitHub */
+    async sync() {
+        const config = this.getConfig();
+        if (!config.token || !config.repo) {
+            throw new Error('请先在「GitHub 设置」中配置仓库和令牌');
+        }
+
+        const owner = config.owner || 'Plonkloving';
+        const repo = config.repo;
+        const branch = config.branch || 'main';
+
+        // 获取本地文章数据
+        const posts = loadUserPosts();
+        if (posts.length === 0) {
+            throw new Error('暂无自定义文章可同步，请先添加文章');
+        }
+
+        // 编码内容（Base64）
+        const jsonStr = JSON.stringify(posts, null, 2);
+        const content = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        // 获取当前 SHA（文件存在时需要）
+        const sha = await this.fetchSha(owner, repo, branch, config.token);
+
+        // 构造提交
+        const body = {
+            message: '📝 同步博客文章',
+            content: content,
+            branch: branch
+        };
+        if (sha) body.sha = sha;
+
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/posts.json`;
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                Authorization: `token ${config.token}`,
+                Accept: 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || '同步失败');
+        }
+
+        return true;
+    },
+
+    /** 从 GitHub 拉取最新数据到本地 */
+    async pull() {
+        try {
+            const res = await fetch('posts.json?_=' + Date.now());
+            if (res.ok) {
+                const data = await res.json();
+                // 替换本地数据
+                saveUserPosts(data);
+                return data.length;
+            }
+        } catch {}
+        return -1;
+    }
+};
 
 // ==================== 管理员认证 ====================
 
@@ -858,16 +980,98 @@ const Admin = {
         if (!confirm('再次确认：真的要全部删除吗？')) return;
         saveUserPosts([]);
         this.renderList();
-    }
-};
+    // ---- GitHub 同步 ----
 
-window.Admin = Admin;
+    /** Show sync status bar */
+    setSyncStatus(icon, text, isError) {
+        const bar = document.getElementById('gitSyncBar');
+        const iconEl = document.getElementById('gitSyncIcon');
+        const textEl = document.getElementById('gitSyncText');
+        if (!bar) return;
+        bar.style.display = 'flex';
+        iconEl.textContent = icon;
+        textEl.textContent = text;
+        textEl.style.color = isError ? '#dc2626' : 'var(--text)';
+        if (isError) {
+            setTimeout(() => { bar.style.display = 'none'; }, 5000);
+        }
+    },
+
+    /** 一键同步到 GitHub */
+    async syncToGitHub() {
+        try {
+            this.setSyncStatus('⏳', '正在同步到 GitHub...');
+            await GitSync.sync();
+            this.setSyncStatus('✅', '同步成功！文章已推送到 GitHub 仓库');
+            await loadRemotePosts();
+        } catch (err) {
+            this.setSyncStatus('❌', '同步失败: ' + err.message, true);
+        }
+    },
+
+    /** 从 GitHub 拉取 */
+    async pullFromGitHub() {
+        try {
+            this.setSyncStatus('⏳', '正在从 GitHub 拉取...');
+            const count = await GitSync.pull();
+            if (count >= 0) {
+                this.renderList();
+                this.setSyncStatus('✅', '拉取成功！共 ' + count + ' 篇文章');
+            } else {
+                this.setSyncStatus('⚠️', '拉取完成，但没有获取到数据', true);
+            }
+        } catch (err) {
+            this.setSyncStatus('❌', '拉取失败: ' + err.message, true);
+        }
+    },
+
+    /** 打开 GitHub 设置 */
+    showGitSettings() {
+        const overlay = document.getElementById('gitSettingsOverlay');
+        const config = GitSync.getConfig();
+        document.getElementById('gitToken').value = config.token || '';
+        document.getElementById('gitRepo').value = config.repo || '';
+        document.getElementById('gitOwner').value = config.owner || '';
+        document.getElementById('gitBranch').value = config.branch || '';
+        document.getElementById('gitSettingsStatus').style.display = 'none';
+        overlay.style.display = 'flex';
+    },
+
+    /** 关闭 GitHub 设置 */
+    hideGitSettings() {
+        document.getElementById('gitSettingsOverlay').style.display = 'none';
+    },
+
+    /** 保存 GitHub 配置 */
+    saveGitSettings() {
+        const config = {
+            token: document.getElementById('gitToken').value.trim(),
+            repo: document.getElementById('gitRepo').value.trim(),
+            owner: document.getElementById('gitOwner').value.trim() || 'Plonkloving',
+            branch: document.getElementById('gitBranch').value.trim() || 'main'
+        };
+        if (!config.token || !config.repo) {
+            alert('请填写 Token 和仓库名');
+            return false;
+        }
+        GitSync.saveConfig(config);
+        const status = document.getElementById('gitSettingsStatus');
+        status.textContent = '✅ 配置已保存！';
+        status.style.display = 'block';
+        setTimeout(() => Admin.hideGitSettings(), 1200);
+        return false;
+    }
+
+
+};
 
 // ================================================================
 //  页面初始化
 // ================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 从 GitHub 加载远程文章（所有访问者共享）
+    await loadRemotePosts();
     renderPosts();
     setupContactForm();
     setupMobileMenu();

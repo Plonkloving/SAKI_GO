@@ -1134,6 +1134,28 @@ a:hover {
     font-size: 0.85rem;
     padding: 8px 16px;
 
+
+/* GitHub 同步状态栏 */
+.git-sync-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 24px;
+    padding: 12px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.93rem;
+    box-shadow: var(--shadow);
+}
+
+.git-sync-bar #gitSyncIcon {
+    font-size: 1.3rem;
+}
+
+.git-sync-bar #gitSyncText {
+    color: var(--text);
+}
 /* ==================== 登录认证 ==================== */
 .login-overlay {
     display: none;
