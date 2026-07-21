@@ -333,6 +333,126 @@ a:hover {
     font-size: 0.9rem;
 }
 
+
+/* ==================== 搜索栏 ==================== */
+.search-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    align-items: center;
+}
+
+.search-input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 14px;
+    font-size: 1rem;
+    pointer-events: none;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 16px 10px 42px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    background: var(--bg-card);
+    outline: none;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.tag-filter {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    background: var(--bg-card);
+    cursor: pointer;
+    outline: none;
+    min-width: 110px;
+    font-family: inherit;
+}
+
+.tag-filter:focus {
+    border-color: var(--primary);
+}
+
+/* ==================== 分页 ==================== */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.page-info {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.page-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.page-btn:hover:not(:disabled):not(.active) {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.page-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    cursor: default;
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-ellipsis {
+    padding: 0 4px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
 .empty-posts {
     grid-column: 1 / -1;
     text-align: center;
@@ -1134,6 +1254,54 @@ a:hover {
     font-size: 0.85rem;
     padding: 8px 16px;
 
+/* 管理列表分页 */
+.admin-pagination {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 4px;
+}
+
+.admin-page-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.admin-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.admin-page-btn:hover:not(:disabled):not(.active) {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.admin-page-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    cursor: default;
+}
+
+.admin-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+
 
 /* 同步状态标记 */
 .admin-sync-badge {
@@ -1236,6 +1404,25 @@ a:hover {
     text-align: center;
 }
 
+.login-forgot {
+    text-align: center;
+    margin-top: -4px;
+}
+
+.login-forgot a {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: transparent;
+    transition: var(--transition);
+}
+
+.login-forgot a:hover {
+    color: var(--primary);
+    text-decoration-color: var(--primary);
+}
+
 .login-success {
     color: #16a34a;
     font-size: 0.9rem;
@@ -1252,6 +1439,191 @@ a:hover {
 .login-hint {
     font-size: 0.82rem;
     color: var(--text-secondary);
+}
+
+/* ==================== 批量上传弹窗 ==================== */
+.batch-modal {
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    padding-top: 8px;
+}
+
+.batch-modal .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.batch-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.batch-hint {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 28px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.upload-zone:hover,
+.upload-zone-active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.upload-icon {
+    font-size: 2.4rem;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.upload-text {
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.upload-hint {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+}
+
+.upload-file-info {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.batch-divider {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.batch-divider::before,
+.batch-divider::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--border);
+}
+
+.batch-divider span {
+    padding: 0 16px;
+}
+
+.batch-paste-area textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    font-family: "Fira Code", Consolas, monospace;
+    background: var(--bg);
+    outline: none;
+    resize: vertical;
+    transition: var(--transition);
+    box-sizing: border-box;
+}
+
+.batch-paste-area textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.batch-preview {
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.batch-preview-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.batch-preview-errors {
+    color: #d97706;
+}
+
+.batch-preview-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.batch-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+}
+
+.batch-preview-item:last-child {
+    border-bottom: none;
+}
+
+.batch-preview-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.batch-preview-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.batch-preview-date {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.batch-preview-more {
+    padding: 8px 14px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.batch-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.batch-actions .btn {
+    flex: 1;
 }
 
 /* ==================== 同步结果弹窗 ==================== */
@@ -1283,10 +1655,318 @@ a:hover {
 #syncResultActions {
     display: flex;
     justify-content: center;
+    gap: 12px;
 }
 
 #syncResultBtn {
     min-width: 120px;
+}
+
+#syncCancelBtn {
+    min-width: 100px;
+}
+
+/* ================================================================
+   美化 & 音乐播放器 & 实用组件
+   ================================================================ */
+
+/* ---- 背景微渐变 ---- */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(37, 99, 235, 0.03) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(124, 58, 237, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(37, 99, 235, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ---- 导航栏玻璃效果 ---- */
+.navbar {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-color: rgba(226, 232, 240, 0.6);
+}
+
+/* ---- Hero 渐变动画 ---- */
+.hero {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #db2777 100%) !important;
+    background-size: 200% 200% !important;
+    animation: heroGradient 8s ease infinite;
+}
+
+@keyframes heroGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ---- 卡片增强 ---- */
+.post-card {
+    border-color: rgba(226, 232, 240, 0.6);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.post-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-light);
+}
+
+/* ---- 滚动动画 ---- */
+.animate-ready {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.animate-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ---- 滚动到顶部按钮 ---- */
+#scrollToTop {
+    display: none;
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    z-index: 9990;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    font-size: 1.2rem;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+#scrollToTop:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+}
+
+/* ---- 浮动音乐播放器 ---- */
+#musicPlayer {
+    position: fixed;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9980;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.music-toggle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg-card);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+.music-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
+}
+
+.music-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+    animation: musicFloat 2s ease-in-out infinite;
+}
+
+@keyframes musicFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+.music-panel {
+    position: absolute;
+    left: 56px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 300px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    padding: 16px;
+    display: none;
+    animation: panelSlideUp 0.25s ease;
+}
+
+@keyframes panelSlideUp {
+    from { opacity: 0; transform: translateY(12px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#musicPlayer.panel-open .music-panel {
+    display: block;
+}
+
+.music-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.music-header span {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.music-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.music-close:hover {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.music-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.music-btn {
+    padding: 6px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.music-btn:hover {
+    background: var(--primary-dark);
+}
+
+.music-volume-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.music-volume-wrap span {
+    font-size: 0.85rem;
+}
+
+.music-volume {
+    flex: 1;
+    height: 4px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+}
+
+.music-volume::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+}
+
+.music-url-wrap {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.music-url-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    background: var(--bg);
+    outline: none;
+    font-family: inherit;
+}
+
+.music-url-input:focus {
+    border-color: var(--primary);
+}
+
+.music-url-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.music-url-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+}
+
+.music-presets {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.music-preset-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.music-preset {
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.music-preset:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
 /* ==================== 响应式设计 ==================== */
@@ -1382,6 +2062,11 @@ a:hover {
     .contact-form-container {
         padding: 24px 20px;
     }
+
+    #musicPlayer { left: 6px; top: 50%; }
+    .music-panel { width: 260px; left: 48px; }
+    .music-toggle { width: 40px; height: 40px; }
+    #scrollToTop { right: 16px; bottom: 70px; }
 
     .post-card {
         padding: 20px;

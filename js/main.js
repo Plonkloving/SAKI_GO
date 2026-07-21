@@ -271,9 +271,10 @@ const GitSync = {
     },
 
     /** 获取 posts.json 当前 SHA（文件存在时返回 SHA，不存在返回 null） */
-    async fetchSha(owner, repo, branch, token) {
+    async fetchSha(owner, repo, branch, token, signal) {
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/posts.json?ref=${branch}`;
         const res = await fetch(url, {
+            signal,
             headers: {
                 Authorization: `token ${token}`,
                 Accept: 'application/vnd.github.v3+json'
@@ -289,7 +290,7 @@ const GitSync = {
     },
 
     /** 一键同步到 GitHub */
-    async sync() {
+    async sync(signal) {
         const config = this.getConfig();
         if (!config.token || !config.repo) {
             throw new Error('请先在「GitHub 设置」中配置仓库和令牌');
@@ -310,7 +311,7 @@ const GitSync = {
         const content = btoa(unescape(encodeURIComponent(jsonStr)));
 
         // 获取当前 SHA（文件存在时需要）
-        const sha = await this.fetchSha(owner, repo, branch, config.token);
+        const sha = await this.fetchSha(owner, repo, branch, config.token, signal);
 
         // 构造提交
         const body = {
@@ -322,6 +323,7 @@ const GitSync = {
 
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/posts.json`;
         const res = await fetch(url, {
+            signal,
             method: 'PUT',
             headers: {
                 Authorization: `token ${config.token}`,
@@ -340,9 +342,9 @@ const GitSync = {
     },
 
     /** 从 GitHub 拉取最新数据到本地 */
-    async pull() {
+    async pull(signal) {
         try {
-            const res = await fetch('posts.json?_=' + Date.now());
+            const res = await fetch('posts.json?_=' + Date.now(), { signal });
             if (res.ok) {
                 const data = await res.json();
                 // 替换本地数据
@@ -431,6 +433,15 @@ const Auth = {
         return false;
     },
 
+    /** 忘记密码：重置后重新设置 */
+    forgotPassword() {
+        if (!confirm('⚠️ 确定要重置管理员密码吗？\n\n重置后可以用新密码重新登录。')) return;
+        localStorage.removeItem(PWD_KEY);
+        sessionStorage.removeItem(AUTH_KEY);
+        alert('✅ 密码已重置！请设置一个新的管理密码。');
+        this.showSetup();
+    },
+
     /** 首次设置密码 */
     setup() {
         const pwd1 = document.getElementById('setupPassword').value;
@@ -472,6 +483,7 @@ const Auth = {
         // 初始化管理功能（先加载远程数据）
         await Admin.init();
         generateCaptcha();
+        setupScrollAnimations();
     },
 
     /** 打开修改密码弹窗 */
@@ -534,73 +546,180 @@ const Auth = {
     }
 };
 
-// ==================== 首页文章渲染 ====================
+// ==================== 首页搜索 + 分页 + 渲染 ====================
 
-function renderPosts() {
-    const grid = document.getElementById('postsGrid');
-    if (!grid) return;
+const PAGE_SIZE = 10;
 
-    const allPosts = getPosts();
+const Blog = {
+    _searchTerm: '',
+    _filterTag: '',
+    _page: 1,
 
-    if (allPosts.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-posts">
-                <span>📝</span>
-                <p>还没有文章，快去 <a href="admin.html">管理后台</a> 发布第一篇吧！</p>
-            </div>`;
-        return;
-    }
+    /** 获取过滤后的文章列表 */
+    getFilteredPosts() {
+        let posts = getPosts();
+        const term = this._searchTerm.toLowerCase().trim();
 
-    // 判断哪些文章已同步到 GitHub
-    const syncedIds = new Set(_remotePosts.map(p => p.id));
-    const localIds = new Set(loadUserPosts().map(p => p.id));
+        if (term) {
+            posts = posts.filter(p =>
+                p.title.toLowerCase().includes(term) ||
+                (p.excerpt || '').toLowerCase().includes(term)
+            );
+        }
 
-    grid.innerHTML = allPosts.map(post => {
-        let tagStyle, badge;
-        if (post.isStatic) {
-            // 内置静态文章：蓝色标签，无标记
-            tagStyle = '';
-            badge = '';
-        } else if (syncedIds.has(post.id)) {
-            // 已同步到 GitHub：琥珀色标签 + ✅
-            tagStyle = 'style="background:#fef3c7;color:#d97706"';
-            badge = ' ✅';
-        } else if (localIds.has(post.id)) {
-            // 本地新增未同步：琥珀色标签 + ☁️
-            tagStyle = 'style="background:#fef3c7;color:#d97706"';
-            badge = ' ☁️';
+        if (this._filterTag) {
+            posts = posts.filter(p => p.tag === this._filterTag);
+        }
+
+        return posts;
+    },
+
+    /** 获取当前页文章 */
+    getPagePosts(filtered) {
+        const start = (this._page - 1) * PAGE_SIZE;
+        return filtered.slice(start, start + PAGE_SIZE);
+    },
+
+    /** 获取总页数 */
+    getTotalPages(filtered) {
+        return Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    },
+
+    /** 搜索 */
+    search(term) {
+        this._searchTerm = term;
+        this._page = 1;
+        this.render();
+    },
+
+    /** 按标签筛选 */
+    filterByTag(tag) {
+        this._filterTag = tag;
+        this._page = 1;
+        this.render();
+    },
+
+    /** 跳转页码 */
+    goToPage(page) {
+        const filtered = this.getFilteredPosts();
+        const total = this.getTotalPages(filtered);
+        if (page < 1 || page > total) return;
+        this._page = page;
+        this.render();
+        // 滚动到文章区域
+        document.querySelector('.posts-section').scrollIntoView({ behavior: 'smooth' });
+    },
+
+    /** 渲染首页 */
+    render() {
+        const grid = document.getElementById('postsGrid');
+        const paginationEl = document.getElementById('pagination');
+        if (!grid) return;
+
+        const filtered = this.getFilteredPosts();
+        const pagePosts = this.getPagePosts(filtered);
+        const totalPages = this.getTotalPages(filtered);
+
+        // 判断哪些文章已同步到 GitHub
+        const syncedIds = new Set(_remotePosts.map(p => p.id));
+        const localIds = new Set(loadUserPosts().map(p => p.id));
+
+        // ---- 渲染文章网格 ----
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-posts">
+                    <span>🔍</span>
+                    <p>没有找到匹配的文章，试试其他搜索词或分类。</p>
+                </div>`;
         } else {
-            // 远程已有但本地无：琥珀色标签
-            tagStyle = 'style="background:#fef3c7;color:#d97706"';
-            badge = '';
-        }
-        return `
-        <article class="post-card" data-post-id="${post.id}">
-            ${post.cover ? `<div class="post-cover"><img src="${post.cover}" alt="${post.title}" loading="lazy"></div>` : ''}
-            <span class="post-tag" ${tagStyle}>${post.tag}${badge}</span>
-            <h3>${post.title}</h3>
-            <p class="post-excerpt">${post.excerpt || '暂无摘要'}</p>
-            <div class="post-meta">
-                <span class="post-date">📅 ${post.date || '日期未填'}</span>
-                <span class="post-link">阅读更多 →</span>
-            </div>
-        </article>`;
-    }).join('');
+            const syncedIds = new Set(_remotePosts.map(p => p.id));
+            const localIds = new Set(loadUserPosts().map(p => p.id));
 
-    // 移除旧的事件监听（避免重复绑定）
-    const oldClick = grid._postClickHandler;
-    if (oldClick) grid.removeEventListener('click', oldClick);
+            grid.innerHTML = pagePosts.map(post => {
+                let tagStyle, badge;
+                if (post.isStatic) {
+                    tagStyle = '';
+                    badge = '';
+                } else if (syncedIds.has(post.id)) {
+                    tagStyle = 'style="background:#fef3c7;color:#d97706"';
+                    badge = ' ✅';
+                } else if (localIds.has(post.id)) {
+                    tagStyle = 'style="background:#fef3c7;color:#d97706"';
+                    badge = ' ☁️';
+                } else {
+                    tagStyle = 'style="background:#fef3c7;color:#d97706"';
+                    badge = '';
+                }
+                return `
+                <article class="post-card" data-post-id="${post.id}">
+                    ${post.cover ? `<div class="post-cover"><img src="${post.cover}" alt="${post.title}" loading="lazy"></div>` : ''}
+                    <span class="post-tag" ${tagStyle}>${post.tag}${badge}</span>
+                    <h3>${post.title}</h3>
+                    <p class="post-excerpt">${post.excerpt || '暂无摘要'}</p>
+                    <div class="post-meta">
+                        <span class="post-date">📅 ${post.date || '日期未填'}</span>
+                        <span class="post-link">阅读更多 →</span>
+                    </div>
+                </article>`;
+            }).join('');
 
-    const clickHandler = (e) => {
-        const card = e.target.closest('.post-card');
-        if (card) {
-            const postId = card.dataset.postId;
-            openPostModal(postId);
+            // 事件委托：点击卡片打开弹窗
+            const oldClick = grid._postClickHandler;
+            if (oldClick) grid.removeEventListener('click', oldClick);
+            const handler = (e) => {
+                const card = e.target.closest('.post-card');
+                if (card) openPostModal(card.dataset.postId);
+            };
+            grid._postClickHandler = handler;
+            grid.addEventListener('click', handler);
         }
-    };
-    grid._postClickHandler = clickHandler;
-    grid.addEventListener('click', clickHandler);
-}
+
+        // ---- 渲染分页 ----
+        if (!paginationEl) return;
+
+        if (filtered.length === 0 || totalPages <= 1) {
+            paginationEl.innerHTML = '';
+            return;
+        }
+
+        const total = filtered.length;
+        let html = `<span class="page-info">共 ${total} 篇，第 ${this._page}/${totalPages} 页</span><div class="page-buttons">`;
+
+        // 上一页
+        html += `<button class="page-btn" onclick="Blog.goToPage(${this._page - 1})" ${this._page <= 1 ? 'disabled' : ''}>‹</button>`;
+
+        // 页码按钮（最多显示 7 个，带省略号）
+        const maxVisible = 7;
+        let startPage = Math.max(1, this._page - 3);
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        if (endPage - startPage < maxVisible - 1) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+
+        if (startPage > 1) {
+            html += `<button class="page-btn" onclick="Blog.goToPage(1)">1</button>`;
+            if (startPage > 2) html += `<span class="page-ellipsis">…</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="page-btn ${i === this._page ? 'active' : ''}" onclick="Blog.goToPage(${i})">${i}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<span class="page-ellipsis">…</span>`;
+            html += `<button class="page-btn" onclick="Blog.goToPage(${totalPages})">${totalPages}</button>`;
+        }
+
+        // 下一页
+        html += `<button class="page-btn" onclick="Blog.goToPage(${this._page + 1})" ${this._page >= totalPages ? 'disabled' : ''}>›</button>`;
+        html += `</div>`;
+
+        paginationEl.innerHTML = html;
+    }
+};
+
+// 暴露到全局（供 HTML 内联事件使用）
+window.Blog = Blog;
 
 // ==================== 文章弹窗（全屏预览） ====================
 
@@ -659,6 +778,11 @@ function closePostModal(event) {
 
 // 暴露到全局（HTML onclick 需要）
 window.closePostModal = closePostModal;
+window.closeBatchUpload = (event) => {
+    if (!event || event.target.id === 'batchUploadOverlay') {
+        Admin.closeBatchUpload();
+    }
+};
 
 /** 键盘快捷键：ESC 关闭弹窗 */
 document.addEventListener('keydown', (e) => {
@@ -743,6 +867,7 @@ const Admin = {
     // ---- 当前筛选/搜索状态 ----
     _searchTerm: '',
     _filterTag: '',
+    _adminPage: 1,
 
     /** 初始化管理后台 */
     async init() {
@@ -905,9 +1030,10 @@ const Admin = {
         this.renderList();
     },
 
-    /** 渲染管理后台文章列表 */
+    /** 渲染管理后台文章列表（含分页） */
     renderList() {
         const container = document.getElementById('adminPostList');
+        const paginationEl = document.getElementById('adminPagination');
         if (!container) return;
 
         let posts = loadUserPosts();
@@ -928,11 +1054,17 @@ const Admin = {
 
         // 更新计数
         const countEl = document.getElementById('postCount');
+        const total = loadUserPosts().length;
+        if (countEl) countEl.textContent = `${total} 篇（筛选后 ${posts.length} 篇）`;
+
+        // 分页计算
+        const pageSize = 8;
+        const totalPages = Math.max(1, Math.ceil(posts.length / pageSize));
+        if (this._adminPage > totalPages) this._adminPage = totalPages;
+        const pagePosts = posts.slice((this._adminPage - 1) * pageSize, this._adminPage * pageSize);
 
         // IDs that are already synced to GitHub
         const syncedIds = new Set(_remotePosts.map(p => p.id));
-        const total = loadUserPosts().length;
-        if (countEl) countEl.textContent = `${total} 篇（筛选后 ${posts.length} 篇）`;
 
         if (posts.length === 0) {
             container.innerHTML = `
@@ -941,10 +1073,11 @@ const Admin = {
                         ? '<span>📝</span><p>还没有自定义文章，在左侧新建一篇吧！<br><small>内置的示例文章在首页自动展示，你添加的文章会排在它们前面。</small></p>'
                         : '<span>🔍</span><p>没有匹配的文章，试试其他搜索词。</p>'}
                 </div>`;
+            if (paginationEl) paginationEl.innerHTML = '';
             return;
         }
 
-        container.innerHTML = posts.map(post => `
+        container.innerHTML = pagePosts.map(post => `
             <div class="admin-post-item">
                 <div class="admin-post-info">
                     <span class="admin-post-tag" style="background:#fef3c7;color:#d97706">${post.tag}</span>
@@ -964,17 +1097,44 @@ const Admin = {
                 </div>
             </div>
         `).join('');
+
+        // 渲染分页
+        if (!paginationEl) return;
+        if (totalPages <= 1) { paginationEl.innerHTML = ''; return; }
+
+        let phtml = `<div class="admin-page-buttons">`;
+        phtml += `<button class="admin-page-btn" onclick="Admin.adminGoToPage(${this._adminPage - 1})" ${this._adminPage <= 1 ? 'disabled' : ''}>‹</button>`;
+
+        for (let i = 1; i <= totalPages; i++) {
+            phtml += `<button class="admin-page-btn ${i === this._adminPage ? 'active' : ''}" onclick="Admin.adminGoToPage(${i})">${i}</button>`;
+        }
+
+        phtml += `<button class="admin-page-btn" onclick="Admin.adminGoToPage(${this._adminPage + 1})" ${this._adminPage >= totalPages ? 'disabled' : ''}>›</button>`;
+        phtml += `</div>`;
+        paginationEl.innerHTML = phtml;
+    },
+
+    /** 管理列表翻页 */
+    adminGoToPage(page) {
+        const total = loadUserPosts().length;
+        const pageSize = 8;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page < 1 || page > totalPages) return;
+        this._adminPage = page;
+        this.renderList();
     },
 
     /** 搜索文章 */
     searchPosts(term) {
         this._searchTerm = term;
+        this._adminPage = 1;
         this.renderList();
     },
 
     /** 按标签筛选 */
     filterByTag(tag) {
         this._filterTag = tag;
+        this._adminPage = 1;
         this.renderList();
     },
 
@@ -999,8 +1159,92 @@ const Admin = {
         URL.revokeObjectURL(url);
     },
 
-    /** 导入 JSON 文件 */
-    importJSON(event) {
+    // ---- 批量上传 ----
+
+    /** 存放当前批次的解析结果 */
+    _batchData: null,
+    _batchFileName: '',
+
+    /** 打开批量上传弹窗 */
+    showBatchUpload() {
+        const overlay = document.getElementById('batchUploadOverlay');
+        overlay.style.display = 'flex';
+        this._batchData = null;
+        this._batchFileName = '';
+        document.getElementById('batchPasteArea').value = '';
+        document.getElementById('batchPreview').style.display = 'none';
+        document.getElementById('batchImportBtn').disabled = true;
+        document.getElementById('batchUploadError').style.display = 'none';
+        this.clearBatchFile();
+
+        // 绑定拖拽事件（每次打开时重新绑定，避免重复）
+        const zone = document.getElementById('uploadZone');
+        const removeOld = (type) => {
+            const old = zone['_drag' + type];
+            if (old) zone.removeEventListener(type, old);
+        };
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(t => removeOld(t));
+
+        const onDragOver = (e) => { e.preventDefault(); zone.classList.add('upload-zone-active'); };
+        const onDragLeave = (e) => { zone.classList.remove('upload-zone-active'); };
+        const onDrop = (e) => {
+            e.preventDefault();
+            zone.classList.remove('upload-zone-active');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const input = document.getElementById('batchFileInput');
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                input.files = dt.files;
+                this.handleBatchFile({ target: input });
+            }
+        };
+
+        zone.addEventListener('dragover', onDragOver);
+        zone.addEventListener('dragenter', (e) => e.preventDefault());
+        zone.addEventListener('dragleave', onDragLeave);
+        zone.addEventListener('drop', onDrop);
+        zone['_dragdragover'] = onDragOver;
+        zone['_dragdragleave'] = onDragLeave;
+        zone['_dragdrop'] = onDrop;
+    },
+
+    /** 关闭批量上传弹窗 */
+    closeBatchUpload() {
+        document.getElementById('batchUploadOverlay').style.display = 'none';
+    },
+
+    /** 下载 JSON 模板 */
+    downloadTemplate() {
+        const template = [
+            {
+                title: '文章标题',
+                tag: '技术',
+                date: new Date().toISOString().slice(0, 10),
+                excerpt: '文章摘要...',
+                content: '<h2>正文标题</h2><p>正文内容，支持 HTML 标签。</p>'
+            },
+            {
+                title: '另一篇文章',
+                tag: '前端',
+                date: new Date().toISOString().slice(0, 10),
+                excerpt: '第二篇文章的摘要...',
+                content: '<p>这是正文。</p>'
+            }
+        ];
+        const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'blog-batch-template.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    /** 处理选择的文件 */
+    handleBatchFile(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -1008,33 +1252,145 @@ const Admin = {
         reader.onload = (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                if (!Array.isArray(data)) throw new Error('格式错误');
+                if (!Array.isArray(data)) throw new Error('JSON 必须是数组格式');
+                this._batchData = data;
+                this._batchFileName = file.name;
 
-                const valid = data.every(p =>
-                    p.title && p.id && p.tag
-                );
-                if (!valid) throw new Error('部分数据缺少必要字段');
+                // 显示文件信息
+                document.getElementById('uploadZoneContent').style.display = 'none';
+                document.getElementById('uploadPreview').style.display = 'block';
+                document.getElementById('uploadFileInfo').textContent = `📄 ${file.name}（${data.length} 篇）`;
 
-                let existing = loadUserPosts();
-                const existingIds = new Set(existing.map(p => p.id));
-                const newPosts = data.filter(p => !existingIds.has(p.id));
-
-                if (newPosts.length === 0) {
-                    alert('导入的数据与现有文章完全重复。');
-                    return;
-                }
-
-                existing = [...newPosts, ...existing];
-                saveUserPosts(existing);
-                this.renderList();
-                alert(`✅ 成功导入 ${newPosts.length} 篇文章！`);
+                this.previewBatch();
             } catch (err) {
-                alert('❌ 导入失败：文件格式不正确。\n' + err.message);
+                this._batchData = null;
+                document.getElementById('batchUploadError').textContent = '❌ 文件解析失败：' + err.message;
+                document.getElementById('batchUploadError').style.display = 'block';
             }
         };
         reader.readAsText(file);
-
         event.target.value = '';
+    },
+
+    /** 清除已选文件 */
+    clearBatchFile() {
+        this._batchData = null;
+        this._batchFileName = '';
+        document.getElementById('uploadZoneContent').style.display = '';
+        document.getElementById('uploadPreview').style.display = 'none';
+        document.getElementById('batchFileInput').value = '';
+    },
+
+    /** 预览批次数据（也用于粘贴输入） */
+    previewBatch() {
+        const pasteText = document.getElementById('batchPasteArea').value.trim();
+        const errorEl = document.getElementById('batchUploadError');
+        errorEl.style.display = 'none';
+
+        let data;
+        if (pasteText) {
+            // 来自粘贴
+            try {
+                data = JSON.parse(pasteText);
+                if (!Array.isArray(data)) throw new Error('');
+                this._batchData = data;
+                this._batchFileName = '粘贴内容';
+            } catch {
+                document.getElementById('batchPreview').style.display = 'none';
+                document.getElementById('batchImportBtn').disabled = true;
+                return;
+            }
+        } else if (this._batchData) {
+            data = this._batchData;
+        } else {
+            document.getElementById('batchPreview').style.display = 'none';
+            document.getElementById('batchImportBtn').disabled = true;
+            return;
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+            document.getElementById('batchPreview').style.display = 'none';
+            document.getElementById('batchImportBtn').disabled = true;
+            return;
+        }
+
+        // 校验每条数据
+        const validItems = [];
+        const errors = [];
+        data.forEach((item, i) => {
+            if (!item.title || !item.title.trim()) {
+                errors.push(`第 ${i + 1} 条缺少标题`);
+            } else {
+                validItems.push({
+                    title: item.title.trim(),
+                    tag: item.tag || '其他',
+                    date: item.date || new Date().toISOString().slice(0, 10),
+                    excerpt: (item.excerpt || '').trim(),
+                    content: (item.content || '').trim(),
+                    cover: (item.cover || '').trim(),
+                    url: (item.url || '#').trim()
+                });
+            }
+        });
+
+        // 渲染预览
+        const previewEl = document.getElementById('batchPreview');
+        const countEl = document.getElementById('batchPreviewCount');
+        const errorsEl = document.getElementById('batchPreviewErrors');
+        const listEl = document.getElementById('batchPreviewList');
+
+        previewEl.style.display = 'block';
+        countEl.textContent = `检测到 ${validItems.length} 篇文章`;
+        errorsEl.textContent = errors.length ? `⚠️ ${errors.length} 条问题` : '';
+        errorsEl.style.color = errors.length ? '#d97706' : 'transparent';
+
+        listEl.innerHTML = validItems.slice(0, 20).map(item => `
+            <div class="batch-preview-item">
+                <span class="batch-preview-tag">${item.tag}</span>
+                <span class="batch-preview-title">${item.title}</span>
+                <span class="batch-preview-date">${item.date}</span>
+            </div>
+        `).join('');
+
+        if (validItems.length > 20) {
+            listEl.innerHTML += `<div class="batch-preview-more">... 还有 ${validItems.length - 20} 篇</div>`;
+        }
+
+        this._batchData = validItems;
+        document.getElementById('batchImportBtn').disabled = validItems.length === 0;
+    },
+
+    /** 执行批量导入 */
+    executeBatchImport() {
+        if (!this._batchData || this._batchData.length === 0) return;
+
+        const existing = loadUserPosts();
+        const existingIds = new Set(existing.map(p => p.id));
+
+        let imported = 0;
+        const newPosts = [];
+
+        this._batchData.forEach(item => {
+            const id = genId();
+            if (!existingIds.has(id)) {
+                newPosts.push({
+                    id,
+                    ...item,
+                    isStatic: false
+                });
+                imported++;
+            }
+        });
+
+        if (imported === 0) {
+            alert('所有文章都已存在，无新增内容。');
+            return;
+        }
+
+        saveUserPosts([...newPosts, ...existing]);
+        this.renderList();
+        document.getElementById('batchUploadOverlay').style.display = 'none';
+        alert(`✅ 成功导入 ${imported} 篇文章！\n\n提示：别忘了点击「☁️ 同步到 GitHub」推送到仓库。`);
     },
 
     /** 清空所有自定义文章 */
@@ -1047,13 +1403,17 @@ const Admin = {
 
     // ---- GitHub 同步 ----
 
+    /** 当前同步 AbortController */
+    _syncAbort: null,
+
     /** 显示同步结果弹窗 */
     setSyncStatus(icon, title, desc, isError) {
         const overlay = document.getElementById('syncResultOverlay');
         const iconEl = document.getElementById('syncResultIcon');
         const titleEl = document.getElementById('syncResultTitle');
         const descEl = document.getElementById('syncResultDesc');
-        const btn = document.getElementById('syncResultBtn');
+        const resultBtn = document.getElementById('syncResultBtn');
+        const cancelBtn = document.getElementById('syncCancelBtn');
         if (!overlay) return;
 
         iconEl.textContent = icon;
@@ -1062,12 +1422,19 @@ const Admin = {
         descEl.style.color = isError ? '#dc2626' : 'var(--text-secondary)';
         overlay.style.display = 'flex';
 
-        if (isError) {
-            btn.textContent = '知道了';
-            btn.style.display = 'inline-block';
+        if (icon === '⏳') {
+            // 加载中 — 只显示取消按钮
+            resultBtn.style.display = 'none';
+            cancelBtn.style.display = 'inline-block';
+        } else if (isError) {
+            // 失败 — 显示知道了按钮，隐藏取消
+            cancelBtn.style.display = 'none';
+            resultBtn.textContent = '知道了';
+            resultBtn.style.display = 'inline-block';
         } else {
-            btn.style.display = 'none';
-            // 自动关闭
+            // 成功 — 自动关闭
+            cancelBtn.style.display = 'none';
+            resultBtn.style.display = 'none';
             setTimeout(() => { overlay.style.display = 'none'; }, 2500);
         }
     },
@@ -1077,23 +1444,39 @@ const Admin = {
         document.getElementById('syncResultOverlay').style.display = 'none';
     },
 
+    /** 取消同步 */
+    cancelSync() {
+        if (this._syncAbort) {
+            this._syncAbort.abort();
+            this._syncAbort = null;
+        }
+        document.getElementById('syncResultOverlay').style.display = 'none';
+    },
+
     /** 一键同步到 GitHub */
     async syncToGitHub() {
+        // 创建取消控制器
+        this._syncAbort = new AbortController();
         this.setSyncStatus('⏳', '正在同步...', '请稍候，正在推送到 GitHub');
         try {
-            await GitSync.sync();
+            await GitSync.sync(this._syncAbort.signal);
             await loadRemotePosts();
+            this._syncAbort = null;
             this.setSyncStatus('✅', '同步成功！', '文章已推送到 GitHub 仓库，所有访问者可见');
         } catch (err) {
+            this._syncAbort = null;
+            if (err.name === 'AbortError') return; // 用户取消，不弹错误
             this.setSyncStatus('❌', '同步失败', err.message, true);
         }
     },
 
     /** 从 GitHub 拉取 */
     async pullFromGitHub() {
+        this._syncAbort = new AbortController();
         this.setSyncStatus('⏳', '正在拉取...', '请稍候，正在从 GitHub 获取数据');
         try {
-            const count = await GitSync.pull();
+            const count = await GitSync.pull(this._syncAbort.signal);
+            this._syncAbort = null;
             if (count >= 0) {
                 this.renderList();
                 this.setSyncStatus('✅', '拉取成功！', '共拉取 ' + count + ' 篇文章');
@@ -1101,6 +1484,8 @@ const Admin = {
                 this.setSyncStatus('⚠️', '拉取完成', '没有获取到新数据，请检查仓库中是否有 posts.json', true);
             }
         } catch (err) {
+            this._syncAbort = null;
+            if (err.name === 'AbortError') return;
             this.setSyncStatus('❌', '拉取失败', err.message, true);
         }
     },
@@ -1148,15 +1533,191 @@ window.Auth = Auth;
 window.Admin = Admin;
 
 // ================================================================
+//  音乐播放器
+// ================================================================
+
+const MUSIC_KEY = 'plonk_music_url';
+let _audioEl = null;
+let _musicInitialized = false;
+
+function setupMusicPlayer() {
+    if (_musicInitialized) return;
+    _musicInitialized = true;
+
+    // 创建播放器 HTML
+    const player = document.createElement('div');
+    player.id = 'musicPlayer';
+    player.innerHTML = `
+        <audio id="audioEl" loop preload="none"></audio>
+        <button class="music-toggle" id="musicToggle" onclick="toggleMusic()" title="播放背景音乐">
+            <span class="music-icon" id="musicIcon">🎵</span>
+        </button>
+        <div class="music-panel" id="musicPanel">
+            <div class="music-header">
+                <span id="musicStatus">🎵 背景音乐</span>
+                <button class="music-close" onclick="toggleMusicPanel()">✕</button>
+            </div>
+            <div class="music-controls">
+                <button class="music-btn" id="musicPlayBtn" onclick="toggleMusic()">▶ 播放</button>
+                <div class="music-volume-wrap">
+                    <span>🔊</span>
+                    <input type="range" class="music-volume" id="musicVolume" min="0" max="100" value="50" oninput="setMusicVolume(this.value)">
+                </div>
+            </div>
+            <div class="music-url-wrap">
+                <input type="text" class="music-url-input" id="musicUrlInput" placeholder="粘贴音乐 URL..." value="${localStorage.getItem(MUSIC_KEY) || ''}">
+                <button class="music-url-btn" onclick="applyMusicUrl()">应用</button>
+            </div>
+            <div class="music-presets">
+                <span class="music-preset-label">预设：</span>
+                <button class="music-preset" onclick="setMusicUrl('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3')">🎹 轻快</button>
+                <button class="music-preset" onclick="setMusicUrl('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3')">🎸 舒缓</button>
+                <button class="music-preset" onclick="setMusicUrl('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3')">🎻 古典</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(player);
+
+    _audioEl = document.getElementById('audioEl');
+
+    // 读取音量
+    const savedVol = localStorage.getItem('plonk_music_vol');
+    if (savedVol) {
+        _audioEl.volume = parseInt(savedVol) / 100;
+        document.getElementById('musicVolume').value = savedVol;
+    }
+
+    // 自动加载已保存的 URL
+    const savedUrl = localStorage.getItem(MUSIC_KEY);
+    if (savedUrl) {
+        _audioEl.src = savedUrl;
+    }
+}
+
+function toggleMusicPanel() {
+    document.getElementById('musicPlayer').classList.toggle('panel-open');
+}
+
+async function toggleMusic() {
+    if (!_audioEl.src) {
+        const url = document.getElementById('musicUrlInput').value.trim();
+        if (!url) {
+            alert('请先粘贴音乐 URL 或选择一个预设');
+            return;
+        }
+        _audioEl.src = url;
+        localStorage.setItem(MUSIC_KEY, url);
+    }
+
+    try {
+        if (_audioEl.paused) {
+            await _audioEl.play();
+            document.getElementById('musicPlayBtn').textContent = '⏸ 暂停';
+            document.getElementById('musicIcon').textContent = '🎶';
+            document.getElementById('musicStatus').textContent = '🎶 正在播放';
+        } else {
+            _audioEl.pause();
+            document.getElementById('musicPlayBtn').textContent = '▶ 播放';
+            document.getElementById('musicIcon').textContent = '🎵';
+            document.getElementById('musicStatus').textContent = '🎵 已暂停';
+        }
+    } catch (e) {
+        console.log('Music play failed:', e.message);
+    }
+}
+
+function setMusicVolume(val) {
+    if (_audioEl) {
+        _audioEl.volume = val / 100;
+        localStorage.setItem('plonk_music_vol', val);
+    }
+}
+
+function applyMusicUrl() {
+    const url = document.getElementById('musicUrlInput').value.trim();
+    setMusicUrl(url);
+}
+
+function setMusicUrl(url) {
+    if (!url) return;
+    document.getElementById('musicUrlInput').value = url;
+    localStorage.setItem(MUSIC_KEY, url);
+    if (_audioEl) {
+        _audioEl.src = url;
+        _audioEl.load();
+    }
+    // 如果正在播放，切换为新源
+    if (_audioEl && !_audioEl.paused) {
+        _audioEl.play().catch(() => {});
+    }
+    document.getElementById('musicIcon').textContent = '🎵';
+    document.getElementById('musicStatus').textContent = '🎵 已加载';
+    document.getElementById('musicPlayBtn').textContent = '▶ 播放';
+}
+
+// 暴露到全局
+window.toggleMusic = toggleMusic;
+window.toggleMusicPanel = toggleMusicPanel;
+window.setMusicVolume = setMusicVolume;
+window.applyMusicUrl = applyMusicUrl;
+window.setMusicUrl = setMusicUrl;
+
+// ================================================================
+//  滚动到顶部
+// ================================================================
+
+function setupScrollToTop() {
+    const btn = document.createElement('div');
+    btn.id = 'scrollToTop';
+    btn.innerHTML = '↑';
+    btn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.body.appendChild(btn);
+
+    window.addEventListener('scroll', () => {
+        btn.style.display = window.scrollY > 400 ? 'flex' : 'none';
+    });
+}
+
+// ================================================================
+//  滚动动画
+// ================================================================
+
+let _scrollAnimObs = null;
+
+function setupScrollAnimations() {
+    if (_scrollAnimObs) return;
+    _scrollAnimObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-in');
+                _scrollAnimObs.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    // 观察文章卡片
+    document.querySelectorAll('.post-card, .about-content, .contact-wrapper, .admin-layout').forEach(el => {
+        el.classList.add('animate-ready');
+        _scrollAnimObs.observe(el);
+    });
+}
+
+// ================================================================
 //  页面初始化
 // ================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // 通用功能
+    setupMusicPlayer();
+    setupScrollToTop();
+
     // 从 GitHub 加载远程文章（所有访问者共享）
     await loadRemotePosts();
-    renderPosts();
+    Blog.render();
     setupContactForm();
     setupMobileMenu();
+    setupScrollAnimations();
+
     // 管理页认证（非管理页自动跳过）
     Auth.init();
 });
