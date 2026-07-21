@@ -1,5 +1,16 @@
 [
   {
+    "title": "GISyiqing-master.zip",
+    "tag": "前端",
+    "date": "2026-07-21",
+    "excerpt": "该项目是esri的大赛项目，疫情解封后甲型流感预测，不过由于数据问题，目前我们使用2020-2021新冠数据，不过该项目可以拓展 纯前端，预览在 https://plonkloving.github.io/GISyiqing/ GISyiqing-master.zip文件项目主要关注于疫情期间的疫情预测，特别是以甲型流感为研究对象。该项目是esri大赛的一个参赛项目，它运用了地理信息系统（GIS）技术来处理和分析与疫情相关的数据。尽管该项目最初的设计是针对甲型流感，但实际上，由于数据获取上的限制，项目组决定使用2020-2021年的新冠数据来代替，以便项目的正常进行。这说明了项目具有一定的灵活性和可拓展性，能够应对数据来源的不确定性，也展示了GIS在流行病学领域的广泛应用潜力。 项目采用了纯前端的设计，这意味着它不依赖于服务器端的处理，所有必要的数据处理和用户界面逻辑都在用户的浏览器中完成。这样的设计可以减少服务器负载，提高响应速度，并使得数据处理更加安全。此外，项目成果已经部署在一个在线的预览平台，公众可以通过访问 https://plonkloving.github.io/GISyiqing/ 来体验和查看。这个在线预览平台使得项目的成果可以便捷地分享给全球用户，增强了项目的实际应用价值和影响力。 项目的技术标签“WEBGIS”表明了这是一个专注于网络地理信息系统领域的项目。WEBGIS技术使得传统的地理信息系统可以不再局限于桌面应用程序，而是通过互联网技术扩展到全球范围，使其应用更加广泛。利用WEBGIS技术，可以构建强大的在线地图和空间数据处理平台，支持各种数据的可视化、分析和管理。 GISyiqing-master.zip项目利用GIS和WEBGIS技术，聚焦于疫情数据的分析和预测，特别是在新冠疫情期间的应用。项目的设计和实施表明了其在公共卫生领域，尤其是在流行病预测方面的重要作用。同时，项目也展示出了WEBGIS技术在网络空间数据展示和处理方面的强大能力。尽管项目目前使用的是新冠数据，但它已经为未来对于其他流行病的预测和分析打下了基础，具有很高的实际应用价值和拓展潜力。",
+    "url": "https://download.csdn.net/download/qq_64775230/90574794?ops_request_misc=elastic_search_misc&request_id=e036b5e41b7043c0a506500a041ccc21&biz_id=1&utm_medium=distribute.wap_search_result.none-task-download-2~all~ElasticSearch~search_v2-1-90574794-null-null.wap_first_rank_v2_rank_v29&utm_term=GISyiqing&spm=1018.2118.3001.4187.1",
+    "cover": "",
+    "content": "",
+    "id": "post_1784600841054_j3af",
+    "isStatic": false
+  },
+  {
     "title": "Burp Suit安装和使用（一）",
     "tag": "技术",
     "date": "2026-07-21",
