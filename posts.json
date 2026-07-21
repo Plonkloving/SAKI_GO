@@ -1,5 +1,16 @@
 [
   {
+    "title": "xss-lab教程（下）",
+    "tag": "技术",
+    "date": "2026-07-21",
+    "excerpt": "xss-lab的level11-level14",
+    "url": "https://blog.csdn.net/qq_64775230/article/details/139724746?sharetype=blog&shareId=139724746&sharerefer=APP&sharesource=qq_64775230&sharefrom=link",
+    "cover": "",
+    "content": "",
+    "id": "post_1784667695922_i2zl",
+    "isStatic": false
+  },
+  {
     "title": "xss-lab靶场教程",
     "tag": "技术",
     "date": "2026-07-21",
