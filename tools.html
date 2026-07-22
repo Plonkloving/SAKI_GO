@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plonk's Blog - 工具箱</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="logo">Plonk's Blog</a>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="about.html">关于</a></li>
+                <li><a href="tools.html" class="active">工具箱</a></li>
+                <li><a href="contact.html">联系</a></li>
+                <li><a href="admin.html">管理</a></li>
+            </ul>
+            <button class="menu-toggle" aria-label="菜单">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 页面主体 -->
+    <section class="tools-page">
+        <div class="container">
+            <h1 class="page-title">在线工具箱</h1>
+            <p class="page-subtitle">实用的在线小工具，方便日常开发</p>
+
+            <div class="posts-grid">
+                <!-- DeepSeek -->
+                <div class="tool-card">
+                    <span class="tool-badge">🤖 AI</span>
+                    <h3 class="tool-name">DeepSeek AI</h3>
+                    <p class="tool-desc">访问 DeepSeek 人工智能助手，获取智能问答和编程帮助。</p>
+                    <div class="tool-actions">
+                        <a href="https://chat.deepseek.com/" target="_blank" rel="noopener" class="btn btn-primary">打开 DeepSeek →</a>
+                    </div>
+                </div>
+
+                <!-- MD5 加密 -->
+                <div class="tool-card">
+                    <span class="tool-badge">🔐 加密</span>
+                    <h3 class="tool-name">MD5 加密</h3>
+                    <p class="tool-desc">计算文本的 MD5 哈希值，支持中文和英文。</p>
+                    <div class="tool-body">
+                        <div class="tool-input-row">
+                            <input type="text" id="md5Input" class="tool-input" placeholder="输入要加密的文本..." oninput="Tools.md5()">
+                            <button class="tool-btn-clear" onclick="Tools.clearMd5()">✕</button>
+                        </div>
+                        <div class="tool-output-box" id="md5Output">等待输入...</div>
+                    </div>
+                    <div class="tool-footer">
+                        <button class="tool-copy-btn" onclick="Tools.copyResult('md5Output')">📋 复制结果</button>
+                    </div>
+                </div>
+
+                <!-- Base64 -->
+                <div class="tool-card">
+                    <span class="tool-badge">🔡 编解码</span>
+                    <h3 class="tool-name">Base64 编解码</h3>
+                    <p class="tool-desc">Base64 编码与解码，支持中文。</p>
+                    <div class="tool-body">
+                        <div class="tool-input-row">
+                            <input type="text" id="b64Input" class="tool-input" placeholder="输入文本..." oninput="Tools.b64()">
+                            <button class="tool-btn-clear" onclick="Tools.clearB64()">✕</button>
+                        </div>
+                        <div class="tool-radio-row">
+                            <label><input type="radio" name="b64mode" value="encode" checked onchange="Tools.b64()"> 编码</label>
+                            <label><input type="radio" name="b64mode" value="decode" onchange="Tools.b64()"> 解码</label>
+                        </div>
+                        <div class="tool-output-box" id="b64Output">等待输入...</div>
+                    </div>
+                    <div class="tool-footer">
+                        <button class="tool-copy-btn" onclick="Tools.copyResult('b64Output')">📋 复制结果</button>
+                    </div>
+                </div>
+
+                <!-- URL 编解码 -->
+                <div class="tool-card">
+                    <span class="tool-badge">🔗 编解码</span>
+                    <h3 class="tool-name">URL 编解码</h3>
+                    <p class="tool-desc">URL 编码与解码，处理特殊字符和中文。</p>
+                    <div class="tool-body">
+                        <div class="tool-input-row">
+                            <input type="text" id="urlInput" class="tool-input" placeholder="输入 URL 或文本..." oninput="Tools.url()">
+                            <button class="tool-btn-clear" onclick="Tools.clearUrl()">✕</button>
+                        </div>
+                        <div class="tool-radio-row">
+                            <label><input type="radio" name="urlmode" value="encode" checked onchange="Tools.url()"> 编码</label>
+                            <label><input type="radio" name="urlmode" value="decode" onchange="Tools.url()"> 解码</label>
+                        </div>
+                        <div class="tool-output-box" id="urlOutput">等待输入...</div>
+                    </div>
+                    <div class="tool-footer">
+                        <button class="tool-copy-btn" onclick="Tools.copyResult('urlOutput')">📋 复制结果</button>
+                    </div>
+                </div>
+
+                <!-- UUID 生成器 -->
+                <div class="tool-card">
+                    <span class="tool-badge">🆔 生成</span>
+                    <h3 class="tool-name">UUID 生成器</h3>
+                    <p class="tool-desc">生成随机 UUID v4 标识符，支持单个和批量生成。</p>
+                    <div class="tool-body">
+                        <div class="tool-input-row">
+                            <button class="btn btn-primary" onclick="Tools.generateUUID()">生成单个</button>
+                            <button class="btn btn-secondary" onclick="Tools.generateUUIDs(5)">生成 5 个</button>
+                        </div>
+                        <div class="tool-output-box" id="uuidOutput">点击按钮生成...</div>
+                    </div>
+                    <div class="tool-footer">
+                        <button class="tool-copy-btn" onclick="Tools.copyResult('uuidOutput')">📋 复制全部</button>
+                    </div>
+                </div>
+
+                <!-- 时间戳转换 -->
+                <div class="tool-card">
+                    <span class="tool-badge">⏰ 转换</span>
+                    <h3 class="tool-name">时间戳转换</h3>
+                    <p class="tool-desc">Unix 时间戳与日期时间互相转换。</p>
+                    <div class="tool-body">
+                        <div class="tool-tabs">
+                            <button class="tool-tab active" onclick="Tools.switchTsTab('ts2date', this)">时间戳 → 日期</button>
+                            <button class="tool-tab" onclick="Tools.switchTsTab('date2ts', this)">日期 → 时间戳</button>
+                        </div>
+                        <div id="ts2date">
+                            <div class="tool-input-row">
+                                <input type="number" id="tsInput" class="tool-input" placeholder="输入时间戳（秒）" value="1750406400" oninput="Tools.tsToDate()">
+                            </div>
+                            <div class="tool-output-box" id="tsDateOutput">转换结果</div>
+                        </div>
+                        <div id="date2ts" style="display:none">
+                            <div class="tool-input-row">
+                                <input type="datetime-local" id="dateInput" class="tool-input" oninput="Tools.dateToTs()">
+                            </div>
+                            <div class="tool-output-box" id="dateTsOutput">转换结果</div>
+                        </div>
+                    </div>
+                    <div class="tool-footer">
+                        <button class="tool-copy-btn" onclick="Tools.copyResult('dateTsOutput')">📋 复制结果</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Plonk's Blog. All rights reserved.</p>
+            <div class="social-links">
+                <a href="https://github.com/Plonkloving" target="_blank" rel="noopener">GitHub</a>
+                <a href="mailto:2938115711@qq.com">Email</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/md5.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

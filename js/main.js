@@ -347,12 +347,68 @@ const GitSync = {
             const res = await fetch('posts.json?_=' + Date.now(), { signal });
             if (res.ok) {
                 const data = await res.json();
-                // 替换本地数据
                 saveUserPosts(data);
                 return data.length;
             }
         } catch {}
         return -1;
+    },
+
+    /** 同步评论到 comments.json */
+    async syncComments() {
+        const config = this.getConfig();
+        if (!config.token || !config.repo) {
+            throw new Error('请先配置 GitHub 仓库和令牌');
+        }
+        const owner = config.owner || 'Plonkloving';
+        const repo = config.repo;
+        const branch = config.branch || 'main';
+
+        // 获取评论数据
+        const raw = localStorage.getItem(DANMAKU_KEY);
+        const comments = raw ? JSON.parse(raw) : [];
+        if (comments.length === 0) throw new Error('暂无评论可同步');
+
+        const jsonStr = JSON.stringify(comments, null, 2);
+        const content = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        // 获取当前 SHA
+        let sha = null;
+        try {
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/comments.json?ref=${branch}`;
+            const res = await fetch(url, {
+                headers: { Authorization: `token ${config.token}`, Accept: 'application/vnd.github.v3+json' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                sha = data.sha;
+            }
+        } catch {}
+
+        const body = {
+            message: '💬 同步评论',
+            content,
+            branch
+        };
+        if (sha) body.sha = sha;
+
+        const putUrl = `https://api.github.com/repos/${owner}/${repo}/contents/comments.json`;
+        const res = await fetch(putUrl, {
+            method: 'PUT',
+            headers: {
+                Authorization: `token ${config.token}`,
+                Accept: 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || '评论同步失败');
+        }
+
+        return comments.length;
     }
 };
 
@@ -720,6 +776,296 @@ const Blog = {
 
 // 暴露到全局（供 HTML 内联事件使用）
 window.Blog = Blog;
+
+// ================================================================
+//  Tools — 工具箱
+// ================================================================
+
+const Tools = {
+    // ---- MD5 ----
+    md5() {
+        const input = document.getElementById('md5Input');
+        const output = document.getElementById('md5Output');
+        if (!input || !output) return;
+        if (!input.value.trim()) { output.textContent = '等待输入...'; return; }
+        output.textContent = MD5.hash(input.value);
+    },
+    clearMd5() {
+        document.getElementById('md5Input').value = '';
+        document.getElementById('md5Output').textContent = '等待输入...';
+    },
+
+    // ---- Base64 ----
+    b64() {
+        const input = document.getElementById('b64Input');
+        const output = document.getElementById('b64Output');
+        const mode = document.querySelector('input[name="b64mode"]:checked');
+        if (!input || !output || !mode) return;
+        const val = input.value.trim();
+        if (!val) { output.textContent = '等待输入...'; return; }
+        try {
+            if (mode.value === 'encode') {
+                output.textContent = btoa(unescape(encodeURIComponent(val)));
+            } else {
+                output.textContent = decodeURIComponent(escape(atob(val)));
+            }
+        } catch (e) {
+            output.textContent = '❌ 转换失败: ' + e.message;
+        }
+    },
+    clearB64() {
+        document.getElementById('b64Input').value = '';
+        document.getElementById('b64Output').textContent = '等待输入...';
+    },
+
+    // ---- URL ----
+    url() {
+        const input = document.getElementById('urlInput');
+        const output = document.getElementById('urlOutput');
+        const mode = document.querySelector('input[name="urlmode"]:checked');
+        if (!input || !output || !mode) return;
+        const val = input.value.trim();
+        if (!val) { output.textContent = '等待输入...'; return; }
+        try {
+            output.textContent = mode.value === 'encode' ? encodeURIComponent(val) : decodeURIComponent(val);
+        } catch (e) {
+            output.textContent = '❌ 转换失败: ' + e.message;
+        }
+    },
+    clearUrl() {
+        document.getElementById('urlInput').value = '';
+        document.getElementById('urlOutput').textContent = '等待输入...';
+    },
+
+    // ---- UUID ----
+    generateUUIDs(count) {
+        let uuids = [];
+        for (let i = 0; i < count; i++) {
+            uuids.push(this._uuid());
+        }
+        document.getElementById('uuidOutput').textContent = uuids.join('\n');
+    },
+    generateUUID() {
+        document.getElementById('uuidOutput').textContent = this._uuid();
+    },
+    _uuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    },
+
+    // ---- 时间戳 ----
+    switchTsTab(tabId, btn) {
+        document.querySelectorAll('.tool-tab-content').forEach(el => el.style.display = 'none');
+        document.getElementById(tabId).style.display = 'block';
+        document.querySelectorAll('.tool-tab').forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+        if (tabId === 'ts2date') this.tsToDate();
+        else this.dateToTs();
+    },
+    tsToDate() {
+        const input = document.getElementById('tsInput');
+        const output = document.getElementById('tsDateOutput');
+        if (!input || !output) return;
+        const ts = parseInt(input.value);
+        if (isNaN(ts)) { output.textContent = '请输入有效数字'; return; }
+        const d = new Date(ts * 1000);
+        output.textContent = d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) + ' (北京时间)';
+    },
+    dateToTs() {
+        const input = document.getElementById('dateInput');
+        const output = document.getElementById('dateTsOutput');
+        if (!input || !output) return;
+        if (!input.value) { output.textContent = '请选择日期时间'; return; }
+        const ts = Math.floor(new Date(input.value).getTime() / 1000);
+        output.textContent = ts + ' (Unix 时间戳，秒)';
+    },
+
+    // ---- 复制 ----
+    copyResult(elId) {
+        const el = document.getElementById(elId);
+        if (!el || !el.textContent || el.textContent === '等待输入...' || el.textContent === '点击按钮生成...') return;
+        navigator.clipboard.writeText(el.textContent).then(() => {
+            const orig = el.style.backgroundColor;
+            el.style.backgroundColor = '#dcfce7';
+            setTimeout(() => el.style.backgroundColor = orig, 600);
+        }).catch(() => {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = el.textContent;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        });
+    }
+};
+
+window.Tools = Tools;
+
+// ================================================================
+//  Danmaku — 弹幕评论
+// ================================================================
+
+const DANMAKU_KEY = 'plonk_danmaku';
+
+const Danmaku = {
+    _timer: null,
+    _enabled: true,
+    _remoteComments: [],
+    _remoteLoaded: false,
+
+    /** 从 comments.json 加载远程评论 */
+    async loadRemote() {
+        try {
+            const res = await fetch('comments.json?_=' + Date.now());
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    this._remoteComments = data.filter(c => c && c.name && c.text);
+                    this._remoteLoaded = true;
+                }
+            }
+        } catch {}
+    },
+
+    /** 获取所有评论（远程 + 本地，去重） */
+    getAll() {
+        const local = (() => {
+            try { return JSON.parse(localStorage.getItem(DANMAKU_KEY)) || []; } catch { return []; }
+        })();
+        const localIds = new Set(local.map(c => c.id));
+        const remoteOnly = this._remoteComments.filter(c => !localIds.has(c.id));
+        return [...local, ...remoteOnly];
+    },
+
+    /** 获取总评论数 */
+    getCount() {
+        return this.getAll().length;
+    },
+
+    /** 初始化 */
+    async init() {
+        if (!document.getElementById('danmakuContainer')) return;
+        // 加载远程评论
+        await this.loadRemote();
+        // 合并不重复的远程评论到本地
+        const local = (() => {
+            try { return JSON.parse(localStorage.getItem(DANMAKU_KEY)) || []; } catch { return []; }
+        })();
+        const localIds = new Set(local.map(c => c.id));
+        const toAdd = this._remoteComments.filter(c => !localIds.has(c.id));
+        if (toAdd.length > 0) {
+            localStorage.setItem(DANMAKU_KEY, JSON.stringify([...toAdd, ...local]));
+        }
+        // 恢复弹幕开关状态
+        const saved = localStorage.getItem('plonk_dm_enabled');
+        if (saved !== null) {
+            this._enabled = saved === 'true';
+            const toggle = document.getElementById('danmakuToggle');
+            if (toggle) toggle.checked = this._enabled;
+            if (!this._enabled) {
+                document.getElementById('danmakuContainer').classList.add('paused');
+            }
+        }
+        // 显示已有弹幕
+        this.renderExisting();
+    },
+
+    /** 提交评论 */
+    submit() {
+        const nameInput = document.getElementById('danmakuName');
+        const msgInput = document.getElementById('danmakuText');
+        const name = nameInput.value.trim().slice(0, 12);
+        const text = msgInput.value.trim().slice(0, 60);
+
+        if (!name || !text) return false;
+
+        const comment = {
+            id: Date.now(),
+            name,
+            text,
+            time: new Date().toLocaleString()
+        };
+
+        const all = this.getAll();
+        all.push(comment);
+        localStorage.setItem(DANMAKU_KEY, JSON.stringify(all));
+
+        this.fire(comment);
+        msgInput.value = '';
+        nameInput.focus();
+
+        // 触发自定义事件，Admin 可以监听
+        document.dispatchEvent(new CustomEvent('danmaku-new', { detail: { count: all.length } }));
+        return false;
+    },
+
+    /** 显示已有弹幕循环 */
+    renderExisting() {
+        const all = this.getAll();
+        if (this._timer) { clearInterval(this._timer); this._timer = null; }
+        if (all.length > 0 && this._enabled) {
+            let idx = 0;
+            this._timer = setInterval(() => {
+                if (!this._enabled) return;
+                // 每轮从最新开始
+                const comments = this.getAll();
+                if (comments.length === 0) return;
+                this.fire(comments[idx % comments.length]);
+                idx++;
+            }, 3500);
+        }
+    },
+
+    /** 发射单条弹幕 */
+    fire(comment) {
+        if (!this._enabled) return;
+        const container = document.getElementById('danmakuContainer');
+        if (!container) return;
+
+        const el = document.createElement('div');
+        el.className = 'danmaku-item';
+        el.innerHTML = `<span class="dm-name">${this.escape(comment.name)}</span>${this.escape(comment.text)}`;
+
+        const top = 10 + Math.random() * 75;
+        el.style.top = top + '%';
+
+        const duration = 8 + Math.random() * 6;
+        el.style.animationDuration = duration + 's';
+
+        container.appendChild(el);
+
+        setTimeout(() => {
+            if (el.parentNode) el.remove();
+        }, duration * 1000 + 500);
+    },
+
+    /** 切换弹幕 */
+    toggle(on) {
+        this._enabled = on;
+        localStorage.setItem('plonk_dm_enabled', on);
+        const container = document.getElementById('danmakuContainer');
+        if (on) {
+            container.classList.remove('paused');
+            this.renderExisting();
+        } else {
+            container.classList.add('paused');
+            if (this._timer) { clearInterval(this._timer); this._timer = null; }
+            container.querySelectorAll('.danmaku-item').forEach(el => el.remove());
+        }
+    },
+
+    /** HTML 转义 */
+    escape(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+};
+
+window.Danmaku = Danmaku;
 
 // ==================== 文章弹窗（全屏预览） ====================
 
@@ -1490,6 +1836,17 @@ const Admin = {
         }
     },
 
+    /** 同步评论到 GitHub */
+    async syncComments() {
+        this.setSyncStatus('⏳', '正在同步评论...', '请稍候，正在推送到 GitHub');
+        try {
+            const count = await GitSync.syncComments();
+            this.setSyncStatus('✅', '评论同步成功！', '共同步 ' + count + ' 条评论');
+        } catch (err) {
+            this.setSyncStatus('❌', '评论同步失败', err.message, true);
+        }
+    },
+
     /** 打开 GitHub 设置 */
     showGitSettings() {
         const overlay = document.getElementById('gitSettingsOverlay');
@@ -1717,6 +2074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupContactForm();
     setupMobileMenu();
     setupScrollAnimations();
+    await Danmaku.init();
 
     // 管理页认证（非管理页自动跳过）
     Auth.init();

@@ -1969,6 +1969,378 @@ body::before {
     color: var(--primary);
 }
 
+/* ==================== 工具箱 ==================== */
+.tools-page {
+    padding: 60px 0;
+}
+
+/* 工具卡片 — 与首页 post-card 风格统一 */
+.tool-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px 28px 20px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.35s ease;
+}
+
+.tool-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-light);
+}
+
+/* 卡片头部 — 标签 + 标题 + 描述 */
+.tool-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    align-self: flex-start;
+}
+
+.tool-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.tool-desc {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+/* 卡片主体 — 输入区域 */
+.tool-body {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+
+.tool-input-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.tool-input-row:last-child {
+    margin-bottom: 0;
+}
+
+.tool-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.88rem;
+    background: var(--bg-card);
+    outline: none;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.tool-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.tool-btn-clear {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: var(--transition);
+}
+
+.tool-btn-clear:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+.tool-radio-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+}
+
+.tool-radio-row label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.tool-radio-row input[type="radio"] {
+    accent-color: var(--primary);
+}
+
+.tool-output-box {
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: "Fira Code", Consolas, monospace;
+    word-break: break-all;
+    min-height: 38px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    color: var(--text);
+}
+
+/* 卡片底部 — 操作按钮 */
+.tool-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: auto;
+    padding-top: 4px;
+}
+
+.tool-actions {
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.tool-copy-btn {
+    padding: 4px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: var(--transition);
+    font-family: inherit;
+    color: var(--text-secondary);
+}
+
+.tool-copy-btn:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #16a34a;
+}
+
+/* 选项卡 */
+.tool-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.tool-tab {
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: var(--transition);
+    font-family: inherit;
+    color: var(--text-secondary);
+}
+
+.tool-tab.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.tool-tab:hover:not(.active) {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* ==================== 弹幕系统 ==================== */
+.danmaku-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5000;
+    overflow: hidden;
+}
+
+.danmaku-container.paused { display: none; }
+
+.danmaku-container.active {
+    pointer-events: none;
+}
+
+.danmaku-item {
+    position: absolute;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    color: #fff;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 0, 0, 0.3);
+    padding: 5px 14px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    animation: danmakuFly 10s linear forwards;
+    pointer-events: none;
+    z-index: 5001;
+}
+
+.danmaku-item .dm-name {
+    font-weight: 700;
+    margin-right: 6px;
+    color: #fbbf24;
+}
+
+@keyframes danmakuFly {
+    0% {
+        transform: translateX(0);
+        left: 100%;
+    }
+    100% {
+        transform: translateX(0);
+        left: -100%;
+    }
+}
+
+/* ---- 评论表单 ---- */
+.danmaku-section {
+    margin-top: 40px;
+    padding: 24px 28px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.danmaku-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.danmaku-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.danmaku-switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.danmaku-switch-label {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.danmaku-switch input {
+    display: none;
+}
+
+.danmaku-slider {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--border);
+    border-radius: 12px;
+    transition: var(--transition);
+}
+
+.danmaku-slider::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: var(--transition);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.danmaku-switch input:checked + .danmaku-slider {
+    background: var(--primary);
+}
+
+.danmaku-switch input:checked + .danmaku-slider::after {
+    left: 23px;
+}
+
+.danmaku-form {
+    display: flex;
+    gap: 10px;
+}
+
+.danmaku-name {
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.danmaku-msg {
+    flex: 1;
+}
+
+.danmaku-input {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    background: var(--bg);
+    outline: none;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.danmaku-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.danmaku-send {
+    flex-shrink: 0;
+}
+
+.danmaku-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+
+/* 弹幕响应式 */
+@media (max-width: 768px) {
+    .danmaku-form {
+        flex-wrap: wrap;
+    }
+    .danmaku-name {
+        width: 100%;
+    }
+    .danmaku-item {
+        font-size: 0.82rem;
+        padding: 4px 10px;
+    }
+}
+
 /* ==================== 响应式设计 ==================== */
 @media (max-width: 768px) {
     .hero h1 {
@@ -2021,6 +2393,10 @@ body::before {
 
     .posts-grid {
         grid-template-columns: 1fr;
+    }
+
+    .tool-card {
+        padding: 20px 22px 16px;
     }
 
     .admin-layout {

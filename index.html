@@ -14,6 +14,7 @@
             <ul class="nav-links">
                 <li><a href="index.html" class="active">首页</a></li>
                 <li><a href="about.html">关于</a></li>
+                <li><a href="tools.html">工具箱</a></li>
                 <li><a href="contact.html">联系</a></li>
                 <li><a href="admin.html">管理</a></li>
             </ul>
@@ -63,8 +64,29 @@
             <div class="pagination" id="pagination">
                 <!-- 由 js 动态渲染 -->
             </div>
+
+            <!-- 评论/弹幕 -->
+            <div class="danmaku-section">
+                <div class="danmaku-header">
+                    <h3 class="danmaku-title">💬 说点什么</h3>
+                    <label class="danmaku-switch">
+                        <span class="danmaku-switch-label">弹幕</span>
+                        <input type="checkbox" id="danmakuToggle" checked onchange="Danmaku.toggle(this.checked)">
+                        <span class="danmaku-slider"></span>
+                    </label>
+                </div>
+                <form class="danmaku-form" onsubmit="return Danmaku.submit()">
+                    <input type="text" id="danmakuName" class="danmaku-input danmaku-name" placeholder="昵称" maxlength="12" required>
+                    <input type="text" id="danmakuText" class="danmaku-input danmaku-msg" placeholder="输入评论内容..." maxlength="60" required>
+                    <button type="submit" class="btn btn-primary danmaku-send">发送</button>
+                </form>
+                <p class="danmaku-hint">评论将以弹幕形式滚动展示，可随时关闭</p>
+            </div>
         </div>
     </section>
+
+    <!-- 弹幕容器 -->
+    <div class="danmaku-container" id="danmakuContainer"></div>
 
     <!-- 文章预览弹窗 -->
     <div class="modal-overlay" id="postModal" onclick="closePostModal(event)">
