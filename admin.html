@@ -128,9 +128,38 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="postContent">正文内容（支持 HTML）</label>
-                            <textarea id="postContent" rows="8" placeholder="在此输入文章正文内容...&#10;&#10;可以使用 HTML 标签：&lt;h2&gt;标题&lt;/h2&gt; &lt;p&gt;段落&lt;/p&gt; &lt;code&gt;代码&lt;/code&gt; &lt;img&gt;图片等"></textarea>
-                            <span class="form-hint">弹窗预览时会完整渲染，支持 HTML 格式</span>
+                            <label for="postContent">正文内容</label>
+                            <!-- 编辑器工具栏 -->
+                            <div class="editor-toolbar" id="editorToolbar">
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('h2','标题')" title="标题">H</button>
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('strong','加粗文字')" title="加粗"><b>B</b></button>
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('em','斜体')" title="斜体"><i>I</i></button>
+                                <span class="editor-divider"></span>
+                                <button type="button" class="editor-btn" onclick="Admin.insertMedia('image')" title="插入图片">🖼</button>
+                                <button type="button" class="editor-btn" onclick="Admin.insertMedia('video')" title="插入视频">🎬</button>
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('a','链接地址','href=\"https://\"')" title="插入链接">🔗</button>
+                                <span class="editor-divider"></span>
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('code','代码')" title="行内代码">&lt;/&gt;</button>
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('pre','代码块\n')" title="代码块">📄</button>
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('blockquote','引用文字')" title="引用">💬</button>
+                                <button type="button" class="editor-btn" onclick="Admin.insertTag('ul\\n  <li>列表项</li>\\n  <li>列表项</li>','')" title="列表">📋</button>
+                                <span class="editor-divider"></span>
+                                <button type="button" class="editor-btn editor-btn-preview" onclick="Admin.togglePreview()" title="预览">👁 预览</button>
+                                <span class="editor-divider"></span>
+                                <button type="button" class="editor-btn editor-btn-expand" onclick="Admin.toggleEditorSize()" id="editorExpandBtn" title="展开编辑">⛶</button>
+                            </div>
+                            <div class="editor-textarea-wrap">
+                                <textarea id="postContent" class="editor-textarea" rows="8" placeholder="在此输入文章正文...&#10;&#10;也可以使用工具栏快速插入图片、视频、代码等"></textarea>
+                                <div class="editor-resize-handle" id="editorResizeHandle" title="拖拽调整高度">⋮</div>
+                            </div>
+                            <div id="editorPreview" class="editor-preview" style="display:none">
+                                <div class="editor-preview-header">
+                                    <span>📖 预览效果</span>
+                                    <button type="button" class="btn btn-sm btn-sm-edit" onclick="Admin.togglePreview()">返回编辑</button>
+                                </div>
+                                <div class="editor-preview-body" id="editorPreviewBody"></div>
+                            </div>
+                            <span class="form-hint">使用工具栏插入图片、视频、链接等，或直接编写 HTML</span>
                         </div>
 
                         <!-- 动态验证码 -->

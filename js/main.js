@@ -1341,6 +1341,195 @@ const Admin = {
     /** 取消编辑 */
     cancelEdit() {
         this.resetForm();
+        // 关闭预览
+        const preview = document.getElementById('editorPreview');
+        if (preview) preview.style.display = 'none';
+        const textarea = document.getElementById('postContent');
+        if (textarea) textarea.style.display = '';
+    },
+
+    // ---- 编辑器辅助 ----
+
+    /** 在光标处插入标签 */
+    insertTag(tag, placeholder, attrs) {
+        const ta = document.getElementById('postContent');
+        if (!ta) return;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const text = ta.value;
+        const sel = text.substring(start, end) || placeholder;
+
+        let inserted;
+        if (tag === 'ul') {
+            inserted = '<ul>\n  <li>' + sel.split('\n').join('</li>\n  <li>') + '</li>\n</ul>';
+        } else if (tag === 'pre') {
+            inserted = '<pre><code>' + sel + '</code></pre>';
+        } else if (tag === 'a') {
+            inserted = '<a ' + (attrs || 'href=""') + '>' + sel + '</a>';
+        } else {
+            inserted = '<' + tag + (attrs ? ' ' + attrs : '') + '>' + sel + '</' + tag.split(' ')[0] + '>';
+        }
+
+        ta.value = text.substring(0, start) + inserted + text.substring(end);
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = start + inserted.length;
+    },
+
+    /** 打开媒体插入弹窗 */
+    insertMedia(type) {
+        const modal = document.getElementById('mediaModal');
+        const title = document.getElementById('mediaModalTitle');
+        const urlLabel = document.getElementById('mediaUrlLabel');
+        const urlInput = document.getElementById('mediaUrlInput');
+        const extra = document.getElementById('mediaVideoExtra');
+
+        if (type === 'image') {
+            title.textContent = '🖼 插入图片';
+            urlLabel.textContent = '图片 URL';
+            urlInput.placeholder = 'https://example.com/image.jpg';
+            extra.style.display = 'none';
+        } else {
+            title.textContent = '🎬 插入视频';
+            urlLabel.textContent = '视频 URL';
+            urlInput.placeholder = 'https://...';
+            extra.style.display = 'block';
+            this.onVideoSrcChange();
+        }
+
+        urlInput.value = '';
+        modal._mediaType = type;
+        modal.style.display = 'flex';
+        urlInput.focus();
+    },
+
+    /** 视频来源切换 */
+    onVideoSrcChange() {
+        const src = document.querySelector('input[name="vidsrc"]:checked');
+        const urlField = document.getElementById('vidUrlField');
+        const urlLabel = document.getElementById('vidUrlLabel');
+        const urlInput = document.getElementById('vidUrlInput');
+        const widthField = document.getElementById('vidWidthField');
+        if (!src) return;
+
+        switch (src.value) {
+            case 'youtube':
+                urlField.style.display = '';
+                widthField.style.display = '';
+                urlLabel.textContent = 'YouTube 视频 URL 或 ID';
+                urlInput.placeholder = 'https://www.youtube.com/watch?v=...';
+                break;
+            case 'bilibili':
+                urlField.style.display = '';
+                widthField.style.display = '';
+                urlLabel.textContent = 'Bilibili 视频 URL 或 BV 号';
+                urlInput.placeholder = 'https://www.bilibili.com/video/BV...';
+                break;
+            case 'mp4':
+                urlField.style.display = '';
+                widthField.style.display = 'none';
+                urlLabel.textContent = 'MP4 文件直链';
+                urlInput.placeholder = 'https://example.com/video.mp4';
+                break;
+        }
+        urlInput.value = '';
+    },
+
+    /** 确认插入媒体 */
+    confirmMedia() {
+        const modal = document.getElementById('mediaModal');
+        const type = modal._mediaType;
+        const ta = document.getElementById('postContent');
+        if (!ta) return;
+
+        if (type === 'image') {
+            const url = document.getElementById('mediaUrlInput').value.trim();
+            if (!url) { alert('请输入图片 URL'); return; }
+            this._insertAtCursor(ta, '\n<img src="' + url + '" alt="图片" style="max-width:100%">\n');
+        } else {
+            const src = document.querySelector('input[name="vidsrc"]:checked');
+            const vidInput = document.getElementById('vidUrlInput').value.trim();
+            const width = document.getElementById('vidWidth').value || '560';
+
+            if (!vidInput) { alert('请输入视频信息'); return; }
+
+            let embed = '';
+            switch (src.value) {
+                case 'youtube': {
+                    // 提取视频 ID
+                    let id = vidInput;
+                    const ytMatch = vidInput.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
+                    if (ytMatch) id = ytMatch[1];
+                    embed = '<div style="position:relative;padding-bottom:56.25%;height:0;margin:16px 0">'
+                        + '<iframe src="https://www.youtube.com/embed/' + id + '" '
+                        + 'style="position:absolute;top:0;left:0;width:100%;height:100%" '
+                        + 'frameborder="0" allowfullscreen></iframe></div>';
+                    break;
+                }
+                case 'bilibili': {
+                    let bvid = vidInput;
+                    const biliMatch = vidInput.match(/bilibili\.com\/video\/(BV[\w]+)/);
+                    if (biliMatch) bvid = biliMatch[1];
+                    embed = '<div style="position:relative;padding-bottom:56.25%;height:0;margin:16px 0">'
+                        + '<iframe src="https://player.bilibili.com/player.html?bvid=' + bvid + '" '
+                        + 'style="position:absolute;top:0;left:0;width:100%;height:100%" '
+                        + 'frameborder="0" allowfullscreen></iframe></div>';
+                    break;
+                }
+                case 'mp4':
+                    embed = '<div style="margin:16px 0;max-width:100%">'
+                        + '<video controls style="width:100%;max-width:' + width + 'px;border-radius:8px">'
+                        + '<source src="' + vidInput + '" type="video/mp4">'
+                        + '您的浏览器不支持视频播放</video></div>';
+                    break;
+            }
+            this._insertAtCursor(ta, '\n' + embed + '\n');
+        }
+
+        modal.style.display = 'none';
+    },
+
+    /** 在 textarea 光标位置插入 */
+    _insertAtCursor(ta, text) {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        ta.value = ta.value.substring(0, start) + text + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + text.length;
+        ta.focus();
+    },
+
+    /** 关闭媒体弹窗 */
+    closeMediaModal() {
+        document.getElementById('mediaModal').style.display = 'none';
+    },
+
+    /** 切换预览 */
+    togglePreview() {
+        const textarea = document.getElementById('postContent');
+        const preview = document.getElementById('editorPreview');
+        const body = document.getElementById('editorPreviewBody');
+        if (!textarea || !preview) return;
+
+        if (preview.style.display === 'none') {
+            body.innerHTML = textarea.value || '<p style="color:var(--text-secondary)">暂无内容</p>';
+            textarea.style.display = 'none';
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+            textarea.style.display = '';
+        }
+    },
+
+    /** 展开/收缩编辑器 */
+    toggleEditorSize() {
+        const wrap = document.querySelector('.editor-textarea-wrap');
+        const btn = document.getElementById('editorExpandBtn');
+        if (!wrap || !btn) return;
+        wrap.classList.toggle('expanded');
+        const isExpanded = wrap.classList.contains('expanded');
+        btn.textContent = isExpanded ? '⛶' : '⛶';
+        btn.title = isExpanded ? '收缩编辑' : '展开编辑';
+        // 聚焦到编辑器
+        if (isExpanded) document.getElementById('postContent').focus();
     },
 
     /** 编辑文章：填充表单 */
