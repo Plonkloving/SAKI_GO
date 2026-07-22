@@ -1,5 +1,16 @@
 [
   {
+    "title": "立体模型的绝对定向",
+    "tag": "其他",
+    "date": "2026-07-22",
+    "excerpt": "一个立体像对有12个外方位元素。为了相对定向的方便，我们通过设立物空间坐标系将左像片的六个外方位元素变成零，将Bx设定为任意值，仅解求出了五个相对定向元素。因此，接下来的工作就是需要将左像片的六个外方位元素和Bx恢复为应有的值，也就是得到立体模型在摄影瞬间的绝对位置和姿态参数，那么这个称为绝对定向元素",
+    "url": "https://blog.csdn.net/qq_64775230/article/details/130543381?fromshare=blogdetail&sharetype=blogdetail&sharerId=130543381&sharerefer=PC&sharesource=qq_64775230&sharefrom=from_link",
+    "cover": "",
+    "content": "",
+    "id": "post_1784713188750_kav0",
+    "isStatic": false
+  },
+  {
     "title": "xss-lab教程（下）",
     "tag": "技术",
     "date": "2026-07-21",
